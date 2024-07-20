@@ -1,0 +1,1 @@
+# Quality Gates Impact Analyzer
