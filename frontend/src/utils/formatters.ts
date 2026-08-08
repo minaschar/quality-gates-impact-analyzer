@@ -1,15 +1,20 @@
+// Pinned rather than the visitor's browser/OS locale (`undefined`), so date/time text stays
+// consistent with the rest of the UI's hardcoded English copy instead of silently switching
+// language per-visitor (e.g. Greek month names or "πριν από 1 ώρα" relative times).
+const LOCALE = 'en-US';
+
 export function formatDate(value?: string | null): string {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(LOCALE, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 export function formatDateTime(value?: string | null): string {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString(LOCALE, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -25,7 +30,7 @@ export function formatRelativeTime(value?: string | null): string {
   const diffMs = date.getTime() - Date.now();
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' });
   if (Math.abs(diffDays) < 1) {
     const diffHours = Math.round(diffMs / (1000 * 60 * 60));
     if (Math.abs(diffHours) < 1) {
