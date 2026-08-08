@@ -25,7 +25,7 @@ export function Repositories() {
   const [search, setSearch] = useState('');
   const [qgFilter, setQgFilter] = useState<QGFilter>('all');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
 
   const repositoriesQuery = useRepositories();
   const impactAnalysesQuery = useImpactAnalysisList();
