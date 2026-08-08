@@ -3,6 +3,7 @@ package com.thesis.qualitygateanalyzer.service.github;
 import com.thesis.qualitygateanalyzer.domain.qualitygate.BranchProtection;
 import com.thesis.qualitygateanalyzer.domain.qualitygate.CommitInfo;
 import com.thesis.qualitygateanalyzer.domain.qualitygate.WorkflowRun;
+import com.thesis.qualitygateanalyzer.service.configuration.ConfigurationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,9 @@ class GitHubApiClientImplTest {
     @Mock
     private ExchangeFunction exchangeFunction;
 
+    @Mock
+    private ConfigurationService configurationService;
+
     private GitHubApiClientImpl client;
 
     private static final String OWNER = "octocat";
@@ -39,7 +43,7 @@ class GitHubApiClientImplTest {
     @BeforeEach
     void setUp() {
         WebClient.Builder builder = WebClient.builder().exchangeFunction(exchangeFunction);
-        client = new GitHubApiClientImpl(builder, "test-token", 16_777_216);
+        client = new GitHubApiClientImpl(builder, configurationService, "test-token", 16_777_216);
     }
 
     private void mockResponse(HttpStatus status, String body) {
@@ -59,7 +63,8 @@ class GitHubApiClientImplTest {
         @Test
         void withoutToken_stillBuildsWorkingClient() {
             WebClient.Builder builder = WebClient.builder().exchangeFunction(exchangeFunction);
-            GitHubApiClientImpl noTokenClient = new GitHubApiClientImpl(builder, "", 16_777_216);
+            GitHubApiClientImpl noTokenClient =
+                    new GitHubApiClientImpl(builder, configurationService, "", 16_777_216);
             mockResponse(HttpStatus.OK, "{\"id\":1}");
             assertThat(noTokenClient.getRepository(OWNER, REPO)).isPresent();
         }
@@ -67,7 +72,17 @@ class GitHubApiClientImplTest {
         @Test
         void blankToken_treatedAsNoToken() {
             WebClient.Builder builder = WebClient.builder().exchangeFunction(exchangeFunction);
-            assertThat(new GitHubApiClientImpl(builder, "   ", 1000)).isNotNull();
+            assertThat(new GitHubApiClientImpl(builder, configurationService, "   ", 1000)).isNotNull();
+        }
+
+        @Test
+        void databaseToken_takesPrecedenceOverEnvToken() {
+            WebClient.Builder builder = WebClient.builder().exchangeFunction(exchangeFunction);
+            when(configurationService.getGitHubToken()).thenReturn("db-token");
+            GitHubApiClientImpl dbTokenClient =
+                    new GitHubApiClientImpl(builder, configurationService, "env-token", 16_777_216);
+            mockResponse(HttpStatus.OK, "{\"id\":1}");
+            assertThat(dbTokenClient.getRepository(OWNER, REPO)).isPresent();
         }
     }
 

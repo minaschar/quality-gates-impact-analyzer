@@ -5,12 +5,17 @@ import com.thesis.qualitygateanalyzer.domain.enums.QualityGateTool;
 import com.thesis.qualitygateanalyzer.domain.qualitygate.BranchProtection;
 import com.thesis.qualitygateanalyzer.domain.qualitygate.CommitInfo;
 import com.thesis.qualitygateanalyzer.domain.qualitygate.WorkflowRun;
+import com.thesis.qualitygateanalyzer.service.configuration.ConfigurationService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ClientRequest;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.*;
@@ -26,27 +31,57 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GitHubApiClientImpl implements GitHubApiClient {
 
     private final WebClient webClient;
+    private final ConfigurationService configurationService;
+    private final String envToken;
     private final AtomicInteger apiCallCounter = new AtomicInteger(0);
 
     public GitHubApiClientImpl(
             WebClient.Builder builder,
-            @Value("${github.api.token:}") String token,
+            ConfigurationService configurationService,
+            @Value("${github.api.token:}") String envToken,
             @Value("${webclient.max-buffer-size:16777216}") int maxBufferSize) {
 
-        WebClient.Builder b = builder
+        this.configurationService = configurationService;
+        this.envToken = envToken != null ? envToken : StringUtils.EMPTY;
+
+        this.webClient = builder
                 .baseUrl(GitHubConstants.BASE_URL)
                 .defaultHeader(HttpHeaders.ACCEPT, GitHubConstants.ACCEPT_HEADER_VALUE)
                 .defaultHeader(HttpHeaders.USER_AGENT, GitHubConstants.USER_AGENT)
-                .codecs(config -> config.defaultCodecs().maxInMemorySize(maxBufferSize));
+                .codecs(config -> config.defaultCodecs().maxInMemorySize(maxBufferSize))
+                .filter(authenticationFilter())
+                .build();
 
-        if (token != null && !token.isBlank()) {
-            b.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
-            log.info("GitHub client initialized with authentication token (max buffer: {} bytes)", maxBufferSize);
-        } else {
+        if (resolveToken().isBlank()) {
             log.warn("GitHub client initialized without authentication token - rate limit is 60 requests/hour");
+        } else {
+            log.info("GitHub client initialized with authentication token (max buffer: {} bytes)", maxBufferSize);
         }
+    }
 
-        this.webClient = b.build();
+    /**
+     * Resolves and applies the current GitHub token on every request, so a token
+     * saved at runtime via the configuration API takes effect immediately without
+     * restarting the app. The database-backed token (if set) takes precedence
+     * over the {@code github.api.token} startup property, matching the documented
+     * behavior in application.yml.
+     */
+    private ExchangeFilterFunction authenticationFilter() {
+        return ExchangeFilterFunction.ofRequestProcessor(request -> {
+            String token = resolveToken();
+            if (token.isBlank()) {
+                return Mono.just(request);
+            }
+            ClientRequest authenticated = ClientRequest.from(request)
+                    .headers(headers -> headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                    .build();
+            return Mono.just(authenticated);
+        });
+    }
+
+    private String resolveToken() {
+        String dbToken = configurationService.getGitHubToken();
+        return (dbToken != null && !dbToken.isBlank()) ? dbToken : envToken;
     }
 
     @Override
