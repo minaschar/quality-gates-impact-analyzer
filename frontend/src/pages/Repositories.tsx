@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PlusCircle, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/common/Card';
@@ -6,6 +6,7 @@ import { Input } from '@/components/common/Input';
 import { ErrorState } from '@/components/common/ErrorState';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Button } from '@/components/common/Button';
+import { Pagination } from '@/components/common/Pagination';
 import { RepoTableSkeleton } from '@/components/common/skeletons';
 import { RepoTable } from '@/components/repository/RepoTable';
 import { useRepositories } from '@/hooks/useRepositories';
@@ -23,6 +24,8 @@ export function Repositories() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [qgFilter, setQgFilter] = useState<QGFilter>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   const repositoriesQuery = useRepositories();
   const impactAnalysesQuery = useImpactAnalysisList();
@@ -39,6 +42,17 @@ export function Repositories() {
       return matchesSearch && matchesFilter;
     });
   }, [repositories, search, qgFilter]);
+
+  // Whenever the filtered set or page size changes, the current page may no longer be valid
+  // (e.g. it narrows to fewer pages than we were on), so snap back to page 1.
+  useEffect(() => {
+    setPage(1);
+  }, [search, qgFilter, pageSize]);
+
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * pageSize, page * pageSize),
+    [filtered, page, pageSize]
+  );
 
   function trendByRepo(owner: string, repo: string) {
     return impactAnalyses.find((a) => a.owner === owner && a.repo === repo)?.overallTrend;
@@ -141,7 +155,16 @@ export function Repositories() {
           </div>
         )}
         {!isLoading && !isError && filtered.length > 0 && (
-          <RepoTable repositories={filtered} trendByRepo={trendByRepo} />
+          <>
+            <RepoTable repositories={paginated} trendByRepo={trendByRepo} />
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={filtered.length}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </>
         )}
       </Card>
     </div>
