@@ -1,17 +1,29 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { QGToolBadge } from '@/components/repository/QGToolBadge';
 import { EnforcementStatusBadge } from '@/components/repository/EnforcementStatusBadge';
 import { TrendBadge } from '@/components/repository/TrendBadge';
 import { formatRelativeTime } from '@/utils/formatters';
+import type { RepoSortColumn, SortDirection } from '@/utils/repoSort';
 import type { ImpactTrend, RepositoryDetectionResult } from '@/types';
 
 interface RepoTableProps {
   repositories: RepositoryDetectionResult[];
   trendByRepo: (owner: string, repo: string) => ImpactTrend | undefined;
+  sortColumn: RepoSortColumn;
+  sortDirection: SortDirection;
+  onSort: (column: RepoSortColumn) => void;
 }
 
-export function RepoTable({ repositories, trendByRepo }: RepoTableProps) {
+const COLUMNS: { key: RepoSortColumn; label: string }[] = [
+  { key: 'repository', label: 'Repository' },
+  { key: 'qgTools', label: 'QG Tools' },
+  { key: 'enforcement', label: 'Enforcement' },
+  { key: 'trend', label: 'Quality Impact' },
+  { key: 'detectedAt', label: 'Last Analyzed' },
+];
+
+export function RepoTable({ repositories, trendByRepo, sortColumn, sortDirection, onSort }: RepoTableProps) {
   const navigate = useNavigate();
 
   return (
@@ -19,11 +31,30 @@ export function RepoTable({ repositories, trendByRepo }: RepoTableProps) {
       <table className="w-full min-w-[720px] text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-700/40 dark:text-slate-400">
-            <th className="px-4 py-3">Repository</th>
-            <th className="px-4 py-3">QG Tools</th>
-            <th className="px-4 py-3">Enforcement</th>
-            <th className="px-4 py-3">Quality Impact</th>
-            <th className="px-4 py-3">Last Analyzed</th>
+            {COLUMNS.map((col) => {
+              const isActive = sortColumn === col.key;
+              return (
+                <th key={col.key} className="px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => onSort(col.key)}
+                    className="flex items-center gap-1 uppercase tracking-wide text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    aria-label={`Sort by ${col.label}`}
+                  >
+                    {col.label}
+                    {isActive ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUp className="h-3.5 w-3.5 text-blue-500" aria-hidden="true" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5 text-blue-500" aria-hidden="true" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+                    )}
+                  </button>
+                </th>
+              );
+            })}
             <th className="px-4 py-3" />
           </tr>
         </thead>

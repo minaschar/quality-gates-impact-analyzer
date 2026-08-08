@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PlusCircle, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/common/Card';
@@ -12,13 +12,15 @@ import { RepoTable } from '@/components/repository/RepoTable';
 import { useRepositories } from '@/hooks/useRepositories';
 import { useImpactAnalysisList } from '@/hooks/useImpactAnalysis';
 import { classifyError } from '@/utils/errors';
-import type { RepositoryDetectionResult } from '@/types';
+import { compareRepositories, type RepoSortColumn, type SortDirection } from '@/utils/repoSort';
+import type { ImpactAnalysisSummaryDto, RepositoryDetectionResult } from '@/types';
 
 type QGFilter = 'all' | 'with-qg' | 'without-qg';
 
-// Stable module-level reference so `data ?? []` doesn't create a new array identity every
-// render, which would otherwise retrigger the `filtered` useMemo below on every re-render.
+// Stable module-level references so `data ?? []` doesn't create a new array identity every
+// render, which would otherwise retrigger the memos/callbacks below on every re-render.
 const EMPTY_REPOS: RepositoryDetectionResult[] = [];
+const EMPTY_IMPACT_ANALYSES: ImpactAnalysisSummaryDto[] = [];
 
 export function Repositories() {
   const navigate = useNavigate();
@@ -26,12 +28,20 @@ export function Repositories() {
   const [qgFilter, setQgFilter] = useState<QGFilter>('all');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [sortColumn, setSortColumn] = useState<RepoSortColumn>('detectedAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const repositoriesQuery = useRepositories();
   const impactAnalysesQuery = useImpactAnalysisList();
 
   const repositories = repositoriesQuery.data ?? EMPTY_REPOS;
-  const impactAnalyses = impactAnalysesQuery.data ?? [];
+  const impactAnalyses = impactAnalysesQuery.data ?? EMPTY_IMPACT_ANALYSES;
+
+  const trendByRepo = useCallback(
+    (owner: string, repo: string) =>
+      impactAnalyses.find((a) => a.owner === owner && a.repo === repo)?.overallTrend,
+    [impactAnalyses]
+  );
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -43,19 +53,29 @@ export function Repositories() {
     });
   }, [repositories, search, qgFilter]);
 
-  // Whenever the filtered set or page size changes, the current page may no longer be valid
-  // (e.g. it narrows to fewer pages than we were on), so snap back to page 1.
-  useEffect(() => {
-    setPage(1);
-  }, [search, qgFilter, pageSize]);
-
-  const paginated = useMemo(
-    () => filtered.slice((page - 1) * pageSize, page * pageSize),
-    [filtered, page, pageSize]
+  const sorted = useMemo(
+    () => [...filtered].sort((a, b) => compareRepositories(a, b, sortColumn, sortDirection, trendByRepo)),
+    [filtered, sortColumn, sortDirection, trendByRepo]
   );
 
-  function trendByRepo(owner: string, repo: string) {
-    return impactAnalyses.find((a) => a.owner === owner && a.repo === repo)?.overallTrend;
+  // Whenever the filtered/sorted set or page size changes, the current page may no longer be
+  // valid (e.g. it narrows to fewer pages than we were on), so snap back to page 1.
+  useEffect(() => {
+    setPage(1);
+  }, [search, qgFilter, pageSize, sortColumn, sortDirection]);
+
+  const paginated = useMemo(
+    () => sorted.slice((page - 1) * pageSize, page * pageSize),
+    [sorted, page, pageSize]
+  );
+
+  function handleSort(column: RepoSortColumn) {
+    if (column === sortColumn) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
   }
 
   const isLoading = repositoriesQuery.isLoading || impactAnalysesQuery.isLoading;
@@ -156,7 +176,13 @@ export function Repositories() {
         )}
         {!isLoading && !isError && filtered.length > 0 && (
           <>
-            <RepoTable repositories={paginated} trendByRepo={trendByRepo} />
+            <RepoTable
+              repositories={paginated}
+              trendByRepo={trendByRepo}
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
             <Pagination
               page={page}
               pageSize={pageSize}
