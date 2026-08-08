@@ -119,7 +119,7 @@ public class ImpactAnalysisServiceImpl implements ImpactAnalysisService {
             return persistInsufficientData(owner, repo, detection.getUrl(), startTime);
         }
 
-        List<QualityMetricSnapshotDto> metricRows = loadMetricRows(owner, repo);
+        List<QualityMetricSnapshotDto> metricRows = loadMetricRows(owner, repo, forceNewAnalysis);
         if (metricRows.isEmpty()) {
             log.info("No quality metrics dataset rows for {}/{}", owner, repo);
             return persistInsufficientData(owner, repo, detection.getUrl(), startTime);
@@ -200,13 +200,20 @@ public class ImpactAnalysisServiceImpl implements ImpactAnalysisService {
      * here would not undo that, and {@code analyze()} returning normally afterward would then
      * fail at commit with {@code UnexpectedRollbackException}. Guaranteeing {@code ingest()}
      * is only called when it cannot hit its throwing branch avoids that entirely.
+     * <p>
+     * {@code forceNewAnalysis} is forwarded to {@code ingest()} so a forced impact-analysis
+     * recompute also re-reads the CSV dataset instead of silently reusing whatever metrics
+     * happen to already be stored for this repo (e.g. from a stale prior ingestion). Because
+     * a forced call can now reach {@code ingest()}'s CSV-loading/throwing branch even when
+     * metrics are already stored, the empty-dataset pre-check below has to account for that
+     * case too, not just the "nothing stored yet" case.
      */
-    private List<QualityMetricSnapshotDto> loadMetricRows(String owner, String repo) {
-        if (!metricsIngestionService.hasStoredMetrics(owner, repo) && metricsCsvLoader.loadRowsForRepository(owner, repo).isEmpty()) {
-            log.info("No quality metrics dataset rows for {}/{}", owner, repo);
+    private List<QualityMetricSnapshotDto> loadMetricRows(String owner, String repo, boolean forceNewAnalysis) {
+        boolean willReachCsv = forceNewAnalysis || !metricsIngestionService.hasStoredMetrics(owner, repo);
+        if (willReachCsv && metricsCsvLoader.loadRowsForRepository(owner, repo).isEmpty()) {
             return List.of();
         }
-        return metricsIngestionService.ingest(owner, repo, false).response().getRecords();
+        return metricsIngestionService.ingest(owner, repo, forceNewAnalysis).response().getRecords();
     }
 
     // DATE RESOLUTION (reuses CommitHistoryRepository/CommitHistoryEntity + GitHubApiClient.getPullRequest)

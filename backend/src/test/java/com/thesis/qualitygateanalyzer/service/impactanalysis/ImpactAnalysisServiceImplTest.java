@@ -22,6 +22,7 @@ import com.thesis.qualitygateanalyzer.service.qualitygate.QualityGateDetectionSe
 import com.thesis.qualitygateanalyzer.service.qualitymetrics.QualityMetricsCsvLoader;
 import com.thesis.qualitygateanalyzer.service.qualitymetrics.QualityMetricsIngestionService;
 import com.thesis.qualitygateanalyzer.service.qualitymetrics.QualityMetricsIngestionService.IngestResult;
+import org.apache.commons.csv.CSVRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -340,7 +341,12 @@ class ImpactAnalysisServiceImplTest {
 
                 QualityMetricSnapshotDto before = snapshot(1, "pr_base", "sha-before", 10, 50.0);
                 QualityMetricSnapshotDto after = snapshot(2, "pr_closed", "sha-after", 2, 90.0);
-                when(metricsIngestionService.ingest(OWNER, REPO, false)).thenReturn(
+                // forceNewAnalysis=true below must also force a fresh CSV ingestion, not just
+                // recompute the impact-analysis record from stale stored metrics -- so, unlike
+                // most other tests here, the CSV-loader pre-check is NOT skipped by the
+                // hasStoredMetrics=true default and needs its own non-empty stub.
+                when(metricsCsvLoader.loadRowsForRepository(OWNER, REPO)).thenReturn(List.of(mock(CSVRecord.class)));
+                when(metricsIngestionService.ingest(OWNER, REPO, true)).thenReturn(
                         new IngestResult(QualityMetricsResponse.builder().records(List.of(before, after)).build(), false));
                 when(commitHistoryRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(true);
                 when(commitHistoryRepository.findByOwnerAndRepoOrderByCommitDateAsc(OWNER, REPO)).thenReturn(List.of(
