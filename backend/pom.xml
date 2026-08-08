@@ -17,7 +17,6 @@
     <name>Quality Gate Analyzer</name>
     <description>
         Thesis project: Analyzing quality gate enforcement in open-source repositories.
-        PostgreSQL database integration for persistent storage and caching.
     </description>
 
     <properties>
