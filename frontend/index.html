@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <title>Quality Gate Analyzer</title>
+    <style>
+      /* Pure-CSS initial loader shown before React mounts (and thus before Tailwind's
+         classes are available). React's createRoot().render() replaces #root's contents
+         entirely, so this markup disappears the instant the app mounts. */
+      #initial-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc;
+      }
+      @media (prefers-color-scheme: dark) {
+        #initial-loader {
+          background: #0f172a;
+        }
+      }
+      #initial-loader .spinner {
+        width: 28px;
+        height: 28px;
+        border: 3px solid rgba(59, 130, 246, 0.25);
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: initial-spin 0.7s linear infinite;
+      }
+      @keyframes initial-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div id="initial-loader" aria-hidden="true">
+        <div class="spinner"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

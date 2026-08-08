@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # PostgreSQL Database
+  # ═══════════════════════════════════════════════════════════════════════════════
+  postgres:
+    image: postgres:16-alpine
+    container_name: qga-postgres
+    environment:
+      POSTGRES_DB: quality_gate_analyzer_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d quality_gate_analyzer_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # pgAdmin (Optional - for database management)
+  # Access at: http://localhost:5050
+  # Login: admin@thesis.com / admin
+  # ═══════════════════════════════════════════════════════════════════════════════
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: qga-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@thesis.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - admin  # Only starts with: docker-compose --profile admin up
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# USAGE:
+# ═══════════════════════════════════════════════════════════════════════════════
+# Start PostgreSQL only:
+#   docker-compose up -d
+#
+# Start PostgreSQL + pgAdmin:
+#   docker-compose --profile admin up -d
+#
+# Stop all:
+#   docker-compose down
+#
+# Stop and remove volumes (DELETES ALL DATA):
+#   docker-compose down -v
+#
+# View logs:
+#   docker-compose logs -f postgres
+#
+# Connect via psql:
+#   docker exec -it qga-postgres psql -U qga_user -d quality_gate_analyzer_db
+# ═══════════════════════════════════════════════════════════════════════════════

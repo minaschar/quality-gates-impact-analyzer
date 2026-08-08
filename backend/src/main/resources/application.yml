@@ -1,0 +1,86 @@
+# Quality Gate Analyzer - Application Configuration
+
+spring:
+  application:
+    name: quality-gate-analyzer
+
+  # PostgreSQL database
+  datasource:
+    url: jdbc:postgresql://localhost:5433/quality_gate_analyzer_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 30000
+      connection-timeout: 20000
+      max-lifetime: 1800000
+
+  # JPA / Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Use Flyway for schema management
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+        types:
+          print:
+            banner: false
+
+  # Flyway migrations
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+  # Caffeine in-memory cache
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=10m
+
+# Server
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# GitHub API
+# Note: runtime configuration is stored in the database and takes precedence.
+github:
+  api:
+    # Set via environment variable GITHUB_API_TOKEN,
+    # or update at runtime via: PUT /api/v1/configuration/GITHUB_TOKEN
+    token: ${GITHUB_API_TOKEN:}
+
+# WebClient
+webclient:
+  max-buffer-size: 16777216  # 16MB - needed for large GitHub API responses
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.thesis.qualitygateanalyzer: DEBUG
+    org.springframework.web.reactive.function.client: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %highlight(%-5level) [%X{correlationId}] %cyan(%logger{36}) - %msg%n"
+
+# OpenAPI / Swagger
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
