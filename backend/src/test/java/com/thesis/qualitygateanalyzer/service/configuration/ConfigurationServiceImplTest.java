@@ -189,6 +189,34 @@ class ConfigurationServiceImplTest {
         }
 
         @Test
+        void updateValue_toBlankValue_nonStringType_rejectedAndCacheUntouched() {
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            when(repository.findByConfigKey("INT_KEY")).thenReturn(Optional.of(entity("INT_KEY", "42", DataType.INTEGER)));
+            service.updateValue("INT_KEY", "42");
+            assertThat(service.getInt("INT_KEY", -1)).isEqualTo(42);
+
+            when(repository.findByConfigKey("INT_KEY")).thenReturn(Optional.of(entity("INT_KEY", "42", DataType.INTEGER)));
+            assertThrows(IllegalArgumentException.class, () -> service.updateValue("INT_KEY", ""));
+
+            assertThat(service.getInt("INT_KEY", -1)).isEqualTo(42);
+        }
+
+        @Test
+        void syncCache_nullParseAfterSave_clearsStaleCacheEntryInsteadOfKeepingOldValue() {
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            when(repository.findByConfigKey("STR_KEY")).thenReturn(Optional.of(entity("STR_KEY", "old", DataType.STRING)));
+            service.updateValue("STR_KEY", "old");
+            assertThat(service.getString("STR_KEY", "fallback")).isEqualTo("old");
+
+            when(repository.findByConfigKey("STR_KEY")).thenReturn(Optional.of(entity("STR_KEY", null, DataType.STRING)));
+            service.updateValue("STR_KEY", null);
+
+            assertThat(service.getString("STR_KEY", "fallback")).isEqualTo("fallback");
+        }
+
+        @Test
         void create_alreadyExists_throwsIllegalArgumentException() {
             when(repository.existsByConfigKey("KEY")).thenReturn(true);
             assertThrows(IllegalArgumentException.class,
@@ -216,11 +244,29 @@ class ConfigurationServiceImplTest {
     @Nested
     class Validation {
         @Test
-        void create_nullOrBlankValue_skipsValidation() {
+        void create_blankValue_stringType_skipsValidation() {
             when(repository.existsByConfigKey("KEY")).thenReturn(false);
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-            service.create("KEY", null, DataType.INTEGER, ConfigCategory.LIMITS, "d");
-            service.create("KEY2", "  ", DataType.INTEGER, ConfigCategory.LIMITS, "d");
+            service.create("KEY", null, DataType.STRING, ConfigCategory.LIMITS, "d");
+            service.create("KEY2", "  ", DataType.STRING, ConfigCategory.LIMITS, "d");
+        }
+
+        @Test
+        void create_nullValue_nonStringType_throws() {
+            when(repository.existsByConfigKey("KEY")).thenReturn(false);
+            assertThrows(IllegalArgumentException.class,
+                    () -> service.create("KEY", null, DataType.INTEGER, ConfigCategory.LIMITS, "d"));
+        }
+
+        @Test
+        void create_blankValue_nonStringType_throws() {
+            when(repository.existsByConfigKey("KEY")).thenReturn(false);
+            assertThrows(IllegalArgumentException.class,
+                    () -> service.create("KEY", "  ", DataType.INTEGER, ConfigCategory.LIMITS, "d"));
+            assertThrows(IllegalArgumentException.class,
+                    () -> service.create("KEY", "", DataType.BOOLEAN, ConfigCategory.LIMITS, "d"));
+            assertThrows(IllegalArgumentException.class,
+                    () -> service.create("KEY", "", DataType.DOUBLE, ConfigCategory.LIMITS, "d"));
         }
 
         @Test
@@ -228,6 +274,15 @@ class ConfigurationServiceImplTest {
             when(repository.existsByConfigKey("KEY")).thenReturn(false);
             assertThrows(IllegalArgumentException.class,
                     () -> service.create("KEY", "not-a-number", DataType.INTEGER, ConfigCategory.LIMITS, "d"));
+        }
+
+        @Test
+        void create_zeroOrNegativeInteger_throws() {
+            when(repository.existsByConfigKey("KEY")).thenReturn(false);
+            assertThrows(IllegalArgumentException.class,
+                    () -> service.create("KEY", "0", DataType.INTEGER, ConfigCategory.LIMITS, "d"));
+            assertThrows(IllegalArgumentException.class,
+                    () -> service.create("KEY", "-5", DataType.INTEGER, ConfigCategory.LIMITS, "d"));
         }
 
         @Test

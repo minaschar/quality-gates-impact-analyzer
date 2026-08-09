@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react';
 import { Check, KeyRound, RefreshCw, SlidersHorizontal, ToggleLeft } from 'lucide-react';
 import { Card, CardHeader } from '@/components/common/Card';
 import { Input } from '@/components/common/Input';
+import { Checkbox } from '@/components/common/Checkbox';
 import { Button } from '@/components/common/Button';
 import { ErrorState } from '@/components/common/ErrorState';
 import { SettingsSkeleton } from '@/components/common/skeletons';
 import { useConfiguration, useRefreshConfigurationCache, useUpdateConfiguration } from '@/hooks/useConfiguration';
 import { CONFIG_CATEGORY_DISPLAY_NAMES } from '@/utils/constants';
 import { classifyError } from '@/utils/errors';
+import { validateConfigValue } from '@/utils/validators';
 import type { ConfigCategory, ConfigurationEntity } from '@/types';
 
 const CATEGORY_ICON: Record<ConfigCategory, React.ReactNode> = {
@@ -21,7 +23,10 @@ function ConfigRow({ config }: { config: ConfigurationEntity }) {
   const [saved, setSaved] = useState(false);
   const updateMutation = useUpdateConfiguration();
   const isSensitive = config.configKey.includes('TOKEN') || config.configKey.includes('SECRET');
+  const isBoolean = config.dataType === 'BOOLEAN';
   const dirty = value !== config.configValue;
+  const validation = validateConfigValue(value, config.dataType);
+  const showValidation = dirty && !isBoolean;
 
   function handleSave() {
     updateMutation.mutate(
@@ -42,17 +47,28 @@ function ConfigRow({ config }: { config: ConfigurationEntity }) {
         {config.description && <p className="text-xs text-slate-500 dark:text-slate-400">{config.description}</p>}
       </div>
       <div className="flex items-center gap-2 sm:w-1/2">
-        <Input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          type={isSensitive ? 'password' : config.dataType === 'INTEGER' || config.dataType === 'DOUBLE' ? 'number' : 'text'}
-          placeholder={isSensitive ? 'Enter new value to replace' : undefined}
-          aria-label={config.configKey}
-        />
+        {isBoolean ? (
+          <Checkbox
+            label={value.toLowerCase() === 'true' ? 'Enabled' : 'Disabled'}
+            checked={value.toLowerCase() === 'true'}
+            onChange={(e) => setValue(e.target.checked ? 'true' : 'false')}
+            aria-label={config.configKey}
+          />
+        ) : (
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            type={isSensitive ? 'password' : config.dataType === 'INTEGER' || config.dataType === 'DOUBLE' ? 'number' : 'text'}
+            placeholder={isSensitive ? 'Enter new value to replace' : undefined}
+            error={showValidation && !validation.valid ? validation.error : undefined}
+            valid={showValidation && validation.valid}
+            aria-label={config.configKey}
+          />
+        )}
         <Button
           size="sm"
           variant={dirty ? 'primary' : 'secondary'}
-          disabled={!dirty}
+          disabled={!dirty || !validation.valid}
           isLoading={updateMutation.isPending}
           onClick={handleSave}
         >

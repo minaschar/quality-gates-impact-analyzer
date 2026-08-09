@@ -64,6 +64,15 @@ public class ConfigurationServiceImpl implements ConfigurationService {
         };
     }
 
+    private void syncCache(String key, ConfigurationEntity saved) {
+        Object parsed = parseValue(saved);
+        if (parsed != null) {
+            localCache.put(key, parsed);
+        } else {
+            localCache.remove(key);
+        }
+    }
+
     // Value getters
 
     @Override
@@ -198,14 +207,9 @@ public class ConfigurationServiceImpl implements ConfigurationService {
         config.setConfigValue(newValue);
         ConfigurationEntity saved = repository.save(config);
 
-        // Update local cache
-        Object parsed = parseValue(saved);
-        if (parsed != null) {
-            localCache.put(key, parsed);
-        }
+        syncCache(key, saved);
 
-        log.info("Configuration updated: {} = {}", key,
-                key.contains("TOKEN") ? "***" : newValue);
+        log.info("Configuration updated: {} = {}", key, key.contains("TOKEN") ? "***" : newValue);
 
         return saved;
     }
@@ -231,11 +235,7 @@ public class ConfigurationServiceImpl implements ConfigurationService {
 
         ConfigurationEntity saved = repository.save(config);
 
-        // Update local cache
-        Object parsed = parseValue(saved);
-        if (parsed != null) {
-            localCache.put(key, parsed);
-        }
+        syncCache(key, saved);
 
         log.info("Configuration created: {} = {}", key, value);
 
@@ -254,24 +254,31 @@ public class ConfigurationServiceImpl implements ConfigurationService {
     // Validation
 
     private void validateValue(DataType dataType, String value) {
+        if (dataType == DataType.STRING) {
+            return;
+        }
+
         if (value == null || value.isBlank()) {
-            return; // Allow empty values
+            throw new IllegalArgumentException("Value cannot be empty for type " + dataType);
         }
 
         try {
             switch (dataType) {
-                case INTEGER -> Integer.parseInt(value);
+                case INTEGER -> {
+                    int parsed = Integer.parseInt(value);
+                    if (parsed <= 0) {
+                        throw new IllegalArgumentException("Value must be a positive integer: " + value);
+                    }
+                }
                 case BOOLEAN -> {
                     if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
                         throw new IllegalArgumentException("Invalid boolean: " + value);
                     }
                 }
                 case DOUBLE -> Double.parseDouble(value);
-                case STRING -> { /* Always valid */ }
             }
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(
-                    "Invalid value for type " + dataType + ": " + value);
+            throw new IllegalArgumentException("Invalid value for type " + dataType + ": " + value);
         }
     }
 }
