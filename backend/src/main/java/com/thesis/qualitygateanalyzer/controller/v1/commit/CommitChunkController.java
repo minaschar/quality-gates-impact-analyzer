@@ -37,8 +37,7 @@ public class CommitChunkController implements ApiV1Controller {
             @Parameter(description = "Force re-fetch from GitHub even if cached data exists.")
             @RequestParam(defaultValue = "false") boolean forceRefresh) {
 
-        log.info("Commit chunk request for {}/{} (chunkCount={}, forceRefresh={})",
-                organization, repo, chunkCount, forceRefresh);
+        log.info("Commit chunk request for {}/{} (chunkCount={}, forceRefresh={})", organization, repo, chunkCount, forceRefresh);
 
         try {
             CommitChunkResponse response = commitChunkService.getChunks(organization, repo, chunkCount, forceRefresh);
