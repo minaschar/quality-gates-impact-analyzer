@@ -5,7 +5,6 @@ import com.thesis.qualitygateanalyzer.dto.request.QualityGateDetectionRequest;
 import com.thesis.qualitygateanalyzer.dto.response.ApiResponse;
 import com.thesis.qualitygateanalyzer.exception.QualityGateDetectionNotFoundException;
 import com.thesis.qualitygateanalyzer.exception.RepositoryNotFoundException;
-import com.thesis.qualitygateanalyzer.service.github.GitHubApiClient;
 import com.thesis.qualitygateanalyzer.service.qualitygate.PersistenceService;
 import com.thesis.qualitygateanalyzer.service.qualitygate.QualityGateDetectionService;
 import org.junit.jupiter.api.Assertions;
@@ -18,7 +17,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,8 +29,6 @@ class QualityGateDetectionControllerTest {
     @Mock
     private QualityGateDetectionService detectionService;
     @Mock
-    private GitHubApiClient githubClient;
-    @Mock
     private PersistenceService persistenceService;
 
     private QualityGateDetectionController controller;
@@ -43,7 +39,7 @@ class QualityGateDetectionControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new QualityGateDetectionController(detectionService, githubClient, persistenceService);
+        controller = new QualityGateDetectionController(detectionService, persistenceService);
     }
 
     private RepositoryDetectionResult result() {
@@ -245,32 +241,6 @@ class QualityGateDetectionControllerTest {
             when(persistenceService.hasDetection(OWNER, REPO)).thenReturn(true);
             controller.deleteQualityGateDetection(" Octocat ", "Hello-World");
             verify(persistenceService).deleteDetection(OWNER, REPO);
-        }
-    }
-
-    @Nested
-    class Utilities {
-        @Test
-        void rateLimit_highRemaining_ok() {
-            when(githubClient.getRemainingRateLimit()).thenReturn(4000);
-            ResponseEntity<Map<String, Object>> response = controller.getRateLimit();
-            Assertions.assertNotNull(response.getBody());
-            assertThat(response.getBody().get("message")).isEqualTo("OK");
-        }
-
-        @Test
-        void rateLimit_lowRemaining_warns() {
-            when(githubClient.getRemainingRateLimit()).thenReturn(10);
-            ResponseEntity<Map<String, Object>> response = controller.getRateLimit();
-            Assertions.assertNotNull(response.getBody());
-            assertThat(response.getBody().get("message")).isEqualTo("Running low!");
-        }
-
-        @Test
-        void health_returnsUp() {
-            ResponseEntity<Map<String, String>> response = controller.health();
-            Assertions.assertNotNull(response.getBody());
-            assertThat(response.getBody().get("status")).isEqualTo("UP");
         }
     }
 }

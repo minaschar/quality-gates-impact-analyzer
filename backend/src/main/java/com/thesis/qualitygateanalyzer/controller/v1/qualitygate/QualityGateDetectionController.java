@@ -6,7 +6,6 @@ import com.thesis.qualitygateanalyzer.dto.request.QualityGateDetectionRequest;
 import com.thesis.qualitygateanalyzer.dto.response.ApiResponse;
 import com.thesis.qualitygateanalyzer.exception.QualityGateDetectionNotFoundException;
 import com.thesis.qualitygateanalyzer.exception.RepositoryNotFoundException;
-import com.thesis.qualitygateanalyzer.service.github.GitHubApiClient;
 import com.thesis.qualitygateanalyzer.service.qualitygate.PersistenceService;
 import com.thesis.qualitygateanalyzer.service.qualitygate.QualityGateDetectionService;
 import com.thesis.qualitygateanalyzer.util.GitHubIdentifiers;
@@ -19,7 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,7 +33,6 @@ import java.util.regex.Pattern;
 public class QualityGateDetectionController implements ApiV1Controller {
 
     private final QualityGateDetectionService detectionService;
-    private final GitHubApiClient githubClient;
     private final PersistenceService persistenceService;
 
     private static final Pattern GITHUB_URL = Pattern.compile(
@@ -198,37 +195,6 @@ public class QualityGateDetectionController implements ApiV1Controller {
                 .message("Detection deleted for " + owner + "/" + repo)
                 .build());
     }
-
-    // UTILITY ENDPOINTS
-
-    /**
-     * Check GitHub API rate limit.
-     */
-    @GetMapping("/rate-limit")
-    @Operation(summary = "Check GitHub API rate limit")
-    public ResponseEntity<Map<String, Object>> getRateLimit() {
-        int remaining = githubClient.getRemainingRateLimit();
-        return ResponseEntity.ok(Map.of(
-                "remaining", remaining,
-                "limit", 5000,
-                "message", remaining > 100 ? "OK" : "Running low!"
-        ));
-    }
-
-    /**
-     * Health check.
-     */
-    @GetMapping("/health")
-    @Operation(summary = "Health check")
-    public ResponseEntity<Map<String, String>> health() {
-        return ResponseEntity.ok(Map.of(
-                "status", "UP",
-                "version", "1.0.0",
-                "database", "PostgreSQL"
-        ));
-    }
-
-    // HELPERS
 
     private String[] parseUrl(String url) {
         if (url == null || url.isBlank()) {
