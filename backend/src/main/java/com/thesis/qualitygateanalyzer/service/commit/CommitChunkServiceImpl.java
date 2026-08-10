@@ -28,6 +28,10 @@ public class CommitChunkServiceImpl implements CommitChunkService {
     @Override
     @Transactional
     public CommitChunkResponse getChunks(String organization, String repo, int chunkCount, boolean forceRefresh) {
+        if (chunkCount <= 0) {
+            throw new IllegalArgumentException("chunkCount must be positive");
+        }
+
         List<CommitHistoryEntity> commits = resolveCommits(organization, repo, forceRefresh);
 
         int totalCommits = commits.size();

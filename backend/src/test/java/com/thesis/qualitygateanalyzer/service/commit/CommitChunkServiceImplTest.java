@@ -114,6 +114,18 @@ class CommitChunkServiceImplTest {
     }
 
     @Test
+    void zeroChunkCount_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> service.getChunks(OWNER, REPO, 0, false));
+        verifyNoInteractions(commitHistoryRepository, githubClient);
+    }
+
+    @Test
+    void negativeChunkCount_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> service.getChunks(OWNER, REPO, -5, false));
+        verifyNoInteractions(commitHistoryRepository, githubClient);
+    }
+
+    @Test
     void chunkCountGreaterThanTotalCommits_throwsInvalidChunkCountException() {
         when(commitHistoryRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(true);
         when(commitHistoryRepository.findByOwnerAndRepoOrderByCommitDateAsc(OWNER, REPO))
