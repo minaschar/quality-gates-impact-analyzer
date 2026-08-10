@@ -6,6 +6,7 @@ import com.thesis.qualitygateanalyzer.dto.response.ImpactAnalysisResponse;
 import com.thesis.qualitygateanalyzer.dto.response.ImpactAnalysisSummaryDto;
 import com.thesis.qualitygateanalyzer.exception.RepositoryNotFoundException;
 import com.thesis.qualitygateanalyzer.service.impactanalysis.ImpactAnalysisService;
+import com.thesis.qualitygateanalyzer.util.GitHubIdentifiers;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -47,6 +48,9 @@ public class ImpactAnalysisController implements ApiV1Controller {
             @Parameter(description = "Repository name") @RequestParam String repo,
             @Parameter(description = "Force recomputation even if cached data exists")
             @RequestParam(defaultValue = "false") boolean forceNewAnalysis) {
+
+        owner = GitHubIdentifiers.normalize(owner);
+        repo = GitHubIdentifiers.normalize(repo);
 
         log.info("Impact analysis request for {}/{} (forceNewAnalysis={})", owner, repo, forceNewAnalysis);
 
@@ -102,6 +106,9 @@ public class ImpactAnalysisController implements ApiV1Controller {
     public ResponseEntity<ApiResponse<ImpactAnalysisResponse>> getImpactAnalysis(
             @PathVariable String owner,
             @PathVariable String repo) {
+
+        owner = GitHubIdentifiers.normalize(owner);
+        repo = GitHubIdentifiers.normalize(repo);
 
         log.info("Get impact analysis request for {}/{}", owner, repo);
 

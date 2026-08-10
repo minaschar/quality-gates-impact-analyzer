@@ -47,4 +47,13 @@ class QualityMetricsCsvLoaderImplTest {
         assertThat(grouped).containsKey(key);
         assertThat(grouped.get(key)).isNotEmpty();
     }
+
+    @Test
+    void loadAllGroupedByRepository_everyKeyIsNormalized() {
+        Map<QualityMetricsCsvLoader.RepoKey, List<CSVRecord>> grouped = loader.loadAllGroupedByRepository();
+        assertThat(grouped.keySet()).allSatisfy(key -> {
+            assertThat(key.owner()).isEqualTo(key.owner().trim().toLowerCase());
+            assertThat(key.repo()).isEqualTo(key.repo().trim().toLowerCase());
+        });
+    }
 }

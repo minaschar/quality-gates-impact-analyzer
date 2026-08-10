@@ -8,6 +8,7 @@ import com.thesis.qualitygateanalyzer.exception.NoDataInDatasetException;
 import com.thesis.qualitygateanalyzer.exception.QualityMetricsNotFoundException;
 import com.thesis.qualitygateanalyzer.service.qualitymetrics.QualityMetricsIngestionService;
 import com.thesis.qualitygateanalyzer.service.qualitymetrics.QualityMetricsIngestionService.IngestResult;
+import com.thesis.qualitygateanalyzer.util.GitHubIdentifiers;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,8 +46,10 @@ public class QualityMetricsController implements ApiV1Controller {
             @Parameter(description = "Force a new ingestion even if cached data exists")
             @RequestParam(defaultValue = "false") boolean forceNewAnalysis) {
 
-        log.info("Quality metrics ingest request for {}/{} (forceNewAnalysis={})",
-                organization, repo, forceNewAnalysis);
+        organization = GitHubIdentifiers.normalize(organization);
+        repo = GitHubIdentifiers.normalize(repo);
+
+        log.info("Quality metrics ingest request for {}/{} (forceNewAnalysis={})", organization, repo, forceNewAnalysis);
 
         try {
             IngestResult result = ingestionService.ingest(organization, repo, forceNewAnalysis);
@@ -127,6 +130,9 @@ public class QualityMetricsController implements ApiV1Controller {
     public ResponseEntity<ApiResponse<QualityMetricsResponse>> getStored(
             @PathVariable String organization,
             @PathVariable String repo) {
+
+        organization = GitHubIdentifiers.normalize(organization);
+        repo = GitHubIdentifiers.normalize(repo);
 
         log.info("Get quality metrics request for {}/{}", organization, repo);
 

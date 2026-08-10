@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -58,6 +59,16 @@ class QualityMetricsControllerTest {
 
             Assertions.assertNotNull(response.getBody());
             assertThat(response.getBody().getMessage()).isEqualTo("Quality metrics ingested and saved");
+        }
+
+        @Test
+        void ownerAndRepoCasing_isNormalizedBeforeCallingService() {
+            QualityMetricsResponse resp = QualityMetricsResponse.builder().organization(OWNER).repo(REPO).build();
+            when(ingestionService.ingest(OWNER, REPO, false)).thenReturn(new IngestResult(resp, true));
+
+            controller.ingest(" Octocat ", "Hello-World", false);
+
+            verify(ingestionService).ingest(OWNER, REPO, false);
         }
 
         @Test
@@ -121,6 +132,18 @@ class QualityMetricsControllerTest {
         void absent_throwsQualityMetricsNotFoundException() {
             when(ingestionService.hasStoredMetrics(OWNER, REPO)).thenReturn(false);
             assertThrows(QualityMetricsNotFoundException.class, () -> controller.getStored(OWNER, REPO));
+        }
+
+        @Test
+        void ownerAndRepoCasing_isNormalizedBeforeCallingService() {
+            when(ingestionService.hasStoredMetrics(OWNER, REPO)).thenReturn(true);
+            QualityMetricsResponse resp = QualityMetricsResponse.builder().organization(OWNER).repo(REPO).build();
+            when(ingestionService.getStored(OWNER, REPO)).thenReturn(resp);
+
+            controller.getStored(" Octocat ", "Hello-World");
+
+            verify(ingestionService).hasStoredMetrics(OWNER, REPO);
+            verify(ingestionService).getStored(OWNER, REPO);
         }
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,6 +46,13 @@ class CommitChunkControllerTest {
         Assertions.assertNotNull(body);
         assertThat(body.isSuccess()).isTrue();
         assertThat(body.getData()).isEqualTo(chunkResponse);
+    }
+
+    @Test
+    void ownerAndRepoCasing_isNormalizedBeforeCallingService() {
+        controller.getCommitChunks(" Octocat ", "Hello-World", 2, false);
+
+        verify(commitChunkService).getChunks(OWNER, REPO, 2, false);
     }
 
     @Test

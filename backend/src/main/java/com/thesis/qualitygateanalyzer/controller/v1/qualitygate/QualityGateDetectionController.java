@@ -9,6 +9,7 @@ import com.thesis.qualitygateanalyzer.exception.RepositoryNotFoundException;
 import com.thesis.qualitygateanalyzer.service.github.GitHubApiClient;
 import com.thesis.qualitygateanalyzer.service.qualitygate.PersistenceService;
 import com.thesis.qualitygateanalyzer.service.qualitygate.QualityGateDetectionService;
+import com.thesis.qualitygateanalyzer.util.GitHubIdentifiers;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -58,13 +59,13 @@ public class QualityGateDetectionController implements ApiV1Controller {
             @Parameter(description = "Force a new detection even if cached data exists")
             @RequestParam(defaultValue = "false") boolean forceNewDetection) {
 
-        log.info("Detection request for: {} (forceNewDetection={})",
-                request.getRepositoryUrl(), forceNewDetection);
+        log.info("Detection request for: {} (forceNewDetection={})", request.getRepositoryUrl(), forceNewDetection);
 
         try {
             String[] ownerRepo = parseUrl(request.getRepositoryUrl());
-            String owner = ownerRepo[0];
-            String repo = ownerRepo[1];
+            String owner = GitHubIdentifiers.normalize(ownerRepo[0]);
+            String repo = GitHubIdentifiers.normalize(ownerRepo[1]);
+            String canonicalUrl = "https://github.com/" + owner + "/" + repo;
 
             // Check for cached detection (unless forcing new)
             if (!forceNewDetection) {
@@ -81,7 +82,7 @@ public class QualityGateDetectionController implements ApiV1Controller {
 
             // Run fresh detection
             log.info("Running fresh detection for {}/{}", owner, repo);
-            RepositoryDetectionResult result = detectionService.detect(request.getRepositoryUrl());
+            RepositoryDetectionResult result = detectionService.detect(canonicalUrl);
 
             // Save to database
             persistenceService.saveDetection(result, forceNewDetection);
@@ -126,10 +127,13 @@ public class QualityGateDetectionController implements ApiV1Controller {
             @PathVariable String owner,
             @PathVariable String repo) {
 
-        log.info("Get detection request for {}/{}", owner, repo);
+        String normalizedOwner = GitHubIdentifiers.normalize(owner);
+        String normalizedRepo = GitHubIdentifiers.normalize(repo);
 
-        RepositoryDetectionResult result = persistenceService.loadDetection(owner, repo)
-                .orElseThrow(() -> new QualityGateDetectionNotFoundException("No detection found for " + owner + "/" + repo));
+        log.info("Get detection request for {}/{}", normalizedOwner, normalizedRepo);
+
+        RepositoryDetectionResult result = persistenceService.loadDetection(normalizedOwner, normalizedRepo)
+                .orElseThrow(() -> new QualityGateDetectionNotFoundException("No detection found for " + normalizedOwner + "/" + normalizedRepo));
 
         return ResponseEntity.ok(ApiResponse.<RepositoryDetectionResult>builder()
                 .success(true)
@@ -177,6 +181,9 @@ public class QualityGateDetectionController implements ApiV1Controller {
     public ResponseEntity<ApiResponse<Void>> deleteQualityGateDetection(
             @PathVariable String owner,
             @PathVariable String repo) {
+
+        owner = GitHubIdentifiers.normalize(owner);
+        repo = GitHubIdentifiers.normalize(repo);
 
         log.info("Delete detection request for {}/{}", owner, repo);
 

@@ -98,6 +98,29 @@ class QualityGateDetectionControllerTest {
         }
 
         @Test
+        void urlCasing_isNormalizedBeforeCacheLookup() {
+            when(persistenceService.loadDetection(OWNER, REPO)).thenReturn(Optional.of(result()));
+            QualityGateDetectionRequest request = new QualityGateDetectionRequest();
+            request.setRepositoryUrl("https://github.com/Octocat/Hello-World");
+
+            controller.detectQualityGate(request, false);
+
+            verify(persistenceService).loadDetection(OWNER, REPO);
+        }
+
+        @Test
+        void urlCasing_isNormalizedBeforeCallingDetectionService() {
+            when(persistenceService.loadDetection(OWNER, REPO)).thenReturn(Optional.empty());
+            when(detectionService.detect(URL)).thenReturn(result());
+            QualityGateDetectionRequest request = new QualityGateDetectionRequest();
+            request.setRepositoryUrl("https://github.com/Octocat/Hello-World.git");
+
+            controller.detectQualityGate(request, false);
+
+            verify(detectionService).detect(URL);
+        }
+
+        @Test
         void invalidUrl_returnsBadRequest() {
             QualityGateDetectionRequest request = new QualityGateDetectionRequest();
             request.setRepositoryUrl("not-a-url");
@@ -163,6 +186,13 @@ class QualityGateDetectionControllerTest {
             when(persistenceService.loadDetection(OWNER, REPO)).thenReturn(Optional.empty());
             assertThrows(QualityGateDetectionNotFoundException.class, () -> controller.getQualityGateDetection(OWNER, REPO));
         }
+
+        @Test
+        void ownerAndRepoCasing_isNormalizedBeforeCallingService() {
+            when(persistenceService.loadDetection(OWNER, REPO)).thenReturn(Optional.of(result()));
+            controller.getQualityGateDetection(" Octocat ", "Hello-World");
+            verify(persistenceService).loadDetection(OWNER, REPO);
+        }
     }
 
     @Nested
@@ -208,6 +238,13 @@ class QualityGateDetectionControllerTest {
             when(persistenceService.hasDetection(OWNER, REPO)).thenReturn(false);
             assertThrows(QualityGateDetectionNotFoundException.class, () -> controller.deleteQualityGateDetection(OWNER, REPO));
             verify(persistenceService, never()).deleteDetection(any(), any());
+        }
+
+        @Test
+        void ownerAndRepoCasing_isNormalizedBeforeCallingService() {
+            when(persistenceService.hasDetection(OWNER, REPO)).thenReturn(true);
+            controller.deleteQualityGateDetection(" Octocat ", "Hello-World");
+            verify(persistenceService).deleteDetection(OWNER, REPO);
         }
     }
 

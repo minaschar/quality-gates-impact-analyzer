@@ -5,6 +5,7 @@ import com.thesis.qualitygateanalyzer.dto.response.ApiResponse;
 import com.thesis.qualitygateanalyzer.dto.response.CommitChunkResponse;
 import com.thesis.qualitygateanalyzer.exception.InvalidChunkCountException;
 import com.thesis.qualitygateanalyzer.service.commit.CommitChunkService;
+import com.thesis.qualitygateanalyzer.util.GitHubIdentifiers;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +37,9 @@ public class CommitChunkController implements ApiV1Controller {
             @RequestParam(defaultValue = "100") int chunkCount,
             @Parameter(description = "Force re-fetch from GitHub even if cached data exists.")
             @RequestParam(defaultValue = "false") boolean forceRefresh) {
+
+        organization = GitHubIdentifiers.normalize(organization);
+        repo = GitHubIdentifiers.normalize(repo);
 
         log.info("Commit chunk request for {}/{} (chunkCount={}, forceRefresh={})", organization, repo, chunkCount, forceRefresh);
 

@@ -20,6 +20,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -83,6 +84,15 @@ class ImpactAnalysisControllerTest {
         }
 
         @Test
+        void ownerAndRepoCasing_isNormalizedBeforeCallingService() {
+            when(impactAnalysisService.analyze(OWNER, REPO, false)).thenReturn(response(true, true));
+
+            controller.analyze(" Octocat ", "Hello-World", false);
+
+            verify(impactAnalysisService).analyze(OWNER, REPO, false);
+        }
+
+        @Test
         void invalidArgument_returnsBadRequest() {
             when(impactAnalysisService.analyze(OWNER, REPO, false))
                     .thenThrow(new IllegalArgumentException("bad owner"));
@@ -133,6 +143,15 @@ class ImpactAnalysisControllerTest {
                     .thenThrow(new ImpactAnalysisNotFoundException("not found"));
 
             assertThrows(ImpactAnalysisNotFoundException.class, () -> controller.getImpactAnalysis(OWNER, REPO));
+        }
+
+        @Test
+        void ownerAndRepoCasing_isNormalizedBeforeCallingService() {
+            when(impactAnalysisService.getAnalysis(OWNER, REPO)).thenReturn(response(true, true));
+
+            controller.getImpactAnalysis(" Octocat ", "Hello-World");
+
+            verify(impactAnalysisService).getAnalysis(OWNER, REPO);
         }
     }
 
