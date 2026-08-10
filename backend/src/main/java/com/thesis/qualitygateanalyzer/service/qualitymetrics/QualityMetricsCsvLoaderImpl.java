@@ -55,7 +55,8 @@ public class QualityMetricsCsvLoaderImpl implements QualityMetricsCsvLoader {
             for (CSVRecord record : parser) {
                 RepoKey key = new RepoKey(
                         GitHubIdentifiers.normalize(record.get("username")),
-                        GitHubIdentifiers.normalize(record.get("repositoryName")));
+                        GitHubIdentifiers.normalize(record.get("repositoryName"))
+                );
                 grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(record);
             }
         } catch (IOException e) {
