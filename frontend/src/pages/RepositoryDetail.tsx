@@ -8,6 +8,7 @@ import { Tabs } from '@/components/common/Tabs';
 import { Button } from '@/components/common/Button';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useDeleteRepository, useDetectQualityGate, useRepositoryDetection } from '@/hooks/useRepositories';
+import { useRefreshRepositoryData } from '@/hooks/useImpactAnalysis';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { classifyError } from '@/utils/errors';
 import { OverviewTab } from '@/components/repository/OverviewTab';
@@ -29,6 +30,7 @@ export function RepositoryDetail() {
 
   const detectionQuery = useRepositoryDetection(owner, repo);
   const detectMutation = useDetectQualityGate();
+  const refreshMutation = useRefreshRepositoryData();
   const deleteMutation = useDeleteRepository();
   const { requestConfirm, dialogProps } = useConfirmDialog();
 
@@ -65,14 +67,14 @@ export function RepositoryDetail() {
 
   const detection = detectionQuery.data;
 
-  function confirmRerunDetection() {
+  function confirmRerunAnalysis() {
     requestConfirm({
-      title: 'Re-run detection?',
-      message: `This bypasses the cache and re-analyzes ${detection.owner}/${detection.repo} from scratch, including fresh GitHub API calls. Continue?`,
-      confirmLabel: 'Re-run Detection',
+      title: 'Re-run analysis?',
+      message: `This bypasses the cache and refreshes detection, commit history, and quality metrics for ${detection.owner}/${detection.repo} from scratch, including fresh GitHub API calls. The Quality Impact comparison itself isn't recomputed automatically -- use Recompute on that tab afterward to reflect the refreshed data. Continue?`,
+      confirmLabel: 'Re-run Analysis',
       onConfirm: () =>
-        detectMutation.mutate(
-          { repositoryUrl: detection.url, forceNewDetection: true },
+        refreshMutation.mutate(
+          { owner: detection.owner, repo: detection.repo },
           { onSuccess: () => detectionQuery.refetch() }
         ),
     });
@@ -123,9 +125,9 @@ export function RepositoryDetail() {
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
-          <Button variant="secondary" isLoading={detectMutation.isPending} onClick={confirmRerunDetection}>
-            {!detectMutation.isPending && <RefreshCw className="h-4 w-4" />}
-            {detectMutation.isPending ? 'Detecting…' : 'Re-run Detection'}
+          <Button variant="secondary" isLoading={refreshMutation.isPending} onClick={confirmRerunAnalysis}>
+            {!refreshMutation.isPending && <RefreshCw className="h-4 w-4" />}
+            {refreshMutation.isPending ? 'Refreshing…' : 'Re-run Analysis'}
           </Button>
           <Button variant="danger" isLoading={deleteMutation.isPending} onClick={confirmDelete}>
             {!deleteMutation.isPending && <Trash2 className="h-4 w-4" />}

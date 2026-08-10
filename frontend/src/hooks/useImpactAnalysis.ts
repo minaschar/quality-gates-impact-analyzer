@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getImpactAnalysis, listImpactAnalyses, runImpactAnalysis } from '@/api/impactAnalysis';
+import { getImpactAnalysis, listImpactAnalyses, refreshRepositoryData, runImpactAnalysis } from '@/api/impactAnalysis';
+import { repositoryKeys } from '@/hooks/useRepositories';
 import { notify } from '@/utils/toast';
 
 export const impactAnalysisKeys = {
@@ -46,5 +47,29 @@ export function useRunImpactAnalysis() {
       }
     },
     onError: (error) => notify.error(error, 'Impact analysis failed'),
+  });
+}
+
+/**
+ * Forces a fresh detection, commit history fetch, and quality-metrics re-ingestion. Does not
+ * recompute the before/after comparison itself -- that's a deliberate second step via
+ * useRunImpactAnalysis's forceNewAnalysis, same as it already works today.
+ */
+export function useRefreshRepositoryData() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ owner, repo }: { owner: string; repo: string }) => refreshRepositoryData(owner, repo),
+    onSuccess: (result) => {
+      // Detection changed; commits/metrics may have too (impact-analysis's own stored
+      // comparison did not -- recomputing it is the user's separate next step).
+      queryClient.invalidateQueries({ queryKey: repositoryKeys.all });
+      queryClient.setQueryData(repositoryKeys.detail(result.owner, result.repo), result);
+      if (!result.hasQualityGate) {
+        notify.warning(`No quality gate detected for ${result.owner}/${result.repo}`);
+      } else {
+        notify.success(`Data refreshed for ${result.owner}/${result.repo}`);
+      }
+    },
+    onError: (error) => notify.error(error, 'Data refresh failed'),
   });
 }

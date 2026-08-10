@@ -105,6 +105,7 @@ public class ImpactAnalysisServiceImpl implements ImpactAnalysisService {
         RepositoryDetectionResult detection = resolveDetection(owner, repo);
         if (!detection.isHasQualityGate()) {
             log.info("No quality gate detected for {}/{}; nothing to analyze", owner, repo);
+            clearStaleImpactAnalysisIfPresent(owner, repo);
             return noQualityGateResponse(owner, repo, detection.getUrl());
         }
 
@@ -169,6 +170,50 @@ public class ImpactAnalysisServiceImpl implements ImpactAnalysisService {
                 .toList();
     }
 
+    /**
+     * Forces a fresh detection, then (only if a quality gate was actually found -- otherwise
+     * there's nothing for commits/metrics to serve) a forced commit-history refresh and a
+     * forced quality-metrics re-ingestion. Deliberately does not touch {@code t_impact_analysis}
+     * itself: recomputing the before/after comparison from this refreshed data is a separate,
+     * deliberate step via {@link #analyze} with {@code forceNewAnalysis=true}.
+     * <p>
+     * Unlike {@link #resolveDetection}, this never reuses a cached detection -- forcing a fresh
+     * one is the entire point of this method.
+     */
+    @Override
+    @Transactional
+    public RepositoryDetectionResult refreshRepositoryData(String owner, String repo) {
+        log.info("Refreshing underlying data for {}/{} (forced detection + commits + metrics)", owner, repo);
+
+        RepositoryDetectionResult fresh = detectionService.detect("https://github.com/" + owner + "/" + repo);
+        persistenceService.saveDetection(fresh, true);
+
+        if (fresh.isHasQualityGate()) {
+            resolveCommitDatesFromHistory(owner, repo, true);
+            loadMetricRows(owner, repo, true);
+        } else {
+            log.info("No quality gate detected for {}/{}; skipping commit/metrics refresh", owner, repo);
+            clearStaleImpactAnalysisIfPresent(owner, repo);
+        }
+
+        log.info("Data refresh complete for {}/{} ({} API calls made)", owner, repo, githubClient.getApiCallCount());
+        return fresh;
+    }
+
+    /**
+     * Deletes any stored impact analysis for a repository that's just been found to no longer
+     * have a detected quality gate (tool removed, or detection re-run with a different result).
+     * Without this, a stale, now-inaccurate {@code t_impact_analysis} row from when the repo did
+     * have a quality gate would keep being served by {@code getAnalysis}/{@code listAll} forever
+     * -- there's no other endpoint that can remove it.
+     */
+    private void clearStaleImpactAnalysisIfPresent(String owner, String repo) {
+        if (impactAnalysisRepository.existsByOwnerAndRepo(owner, repo)) {
+            log.info("Quality gate no longer detected for {}/{}; clearing stale impact analysis", owner, repo);
+            impactAnalysisRepository.deleteByOwnerAndRepo(owner, repo);
+        }
+    }
+
     // DETECTION (reuses QualityGateDetectionService / PersistenceService as-is)
 
     /**
@@ -219,7 +264,11 @@ public class ImpactAnalysisServiceImpl implements ImpactAnalysisService {
     // DATE RESOLUTION (reuses CommitHistoryRepository/CommitHistoryEntity + GitHubApiClient.getPullRequest)
 
     private List<ResolvedRow> resolveDates(String owner, String repo, List<QualityMetricSnapshotDto> rows) {
-        Map<String, Instant> commitDates = resolveCommitDatesFromHistory(owner, repo);
+        // Never forces a commit-history refetch here: analyze()'s forceNewAnalysis recomputes
+        // the comparison from whatever data is already stored, same as it deliberately never
+        // forces a fresh detection either (see resolveDetection). Forcing fresh commits is a
+        // separate, explicit action via refreshRepositoryData().
+        Map<String, Instant> commitDates = resolveCommitDatesFromHistory(owner, repo, false);
         Map<Integer, Map<String, Object>> prCache = new HashMap<>();
 
         List<ResolvedRow> resolved = new ArrayList<>();
@@ -266,16 +315,21 @@ public class ImpactAnalysisServiceImpl implements ImpactAnalysisService {
 
     /**
      * Ensures the repository's default-branch commit history is cached, reusing it if
-     * {@code CommitChunkService} has already ingested it. Duplicates
-     * {@code CommitChunkServiceImpl}'s fetch-and-cache logic (which is private there) rather
-     * than changing that service's public contract.
+     * {@code CommitChunkService} has already ingested it (unless {@code forceRefresh} is set,
+     * matching that service's own force semantics). Duplicates {@code CommitChunkServiceImpl}'s
+     * fetch-and-cache logic (which is private there) rather than changing that service's public
+     * contract.
      */
-    private Map<String, Instant> resolveCommitDatesFromHistory(String owner, String repo) {
+    private Map<String, Instant> resolveCommitDatesFromHistory(String owner, String repo, boolean forceRefresh) {
         List<CommitHistoryEntity> commits;
-        if (commitHistoryRepository.existsByOwnerAndRepo(owner, repo)) {
+        if (!forceRefresh && commitHistoryRepository.existsByOwnerAndRepo(owner, repo)) {
             commits = commitHistoryRepository.findByOwnerAndRepoOrderByCommitDateAsc(owner, repo);
         } else {
-            log.info("No cached commit history for {}/{}; fetching from GitHub to resolve snapshot dates", owner, repo);
+            if (forceRefresh) {
+                log.info("Force refresh: clearing cached commit history for {}/{}", owner, repo);
+                commitHistoryRepository.deleteByOwnerAndRepo(owner, repo);
+            }
+            log.info("Fetching full commit history for {}/{} from GitHub to resolve snapshot dates", owner, repo);
             List<Map<String, Object>> raw = githubClient.getAllCommits(owner, repo);
             Collections.reverse(raw);
             commits = raw.stream()
@@ -501,9 +555,7 @@ public class ImpactAnalysisServiceImpl implements ImpactAnalysisService {
      * work every time.
      */
     private ImpactAnalysisResponse persistInsufficientData(String owner, String repo, String repositoryUrl, Instant startTime) {
-        if (impactAnalysisRepository.existsByOwnerAndRepo(owner, repo)) {
-            impactAnalysisRepository.deleteByOwnerAndRepo(owner, repo);
-        }
+        clearStaleImpactAnalysisIfPresent(owner, repo);
 
         ImpactAnalysisEntity entity = ImpactAnalysisEntity.builder()
                 .owner(owner)

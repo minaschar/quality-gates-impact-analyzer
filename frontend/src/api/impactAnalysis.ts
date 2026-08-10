@@ -1,5 +1,5 @@
 import { apiClient, unwrap } from '@/api/client';
-import type { ApiResponse, ImpactAnalysisResponse, ImpactAnalysisSummaryDto } from '@/types';
+import type { ApiResponse, ImpactAnalysisResponse, ImpactAnalysisSummaryDto, RepositoryDetectionResult } from '@/types';
 
 /** POST /impact-analysis -- runs (or returns cached) before/after quality comparison. */
 export function runImpactAnalysis(owner: string, repo: string, forceNewAnalysis = false) {
@@ -8,6 +8,22 @@ export function runImpactAnalysis(owner: string, repo: string, forceNewAnalysis 
       '/impact-analysis',
       {},
       { params: { owner, repo, forceNewAnalysis } }
+    )
+  );
+}
+
+/**
+ * POST /impact-analysis/refresh -- forces a fresh detection, commit history fetch, and
+ * quality-metrics re-ingestion for a repository. Does not recompute the before/after
+ * comparison itself -- follow up with runImpactAnalysis(owner, repo, true) for that,
+ * as a deliberate second step.
+ */
+export function refreshRepositoryData(owner: string, repo: string) {
+  return unwrap(
+    apiClient.post<ApiResponse<RepositoryDetectionResult>>(
+      '/impact-analysis/refresh',
+      {},
+      { params: { owner, repo } }
     )
   );
 }

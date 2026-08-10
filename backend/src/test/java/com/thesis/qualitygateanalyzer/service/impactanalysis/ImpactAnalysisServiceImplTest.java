@@ -150,6 +150,17 @@ class ImpactAnalysisServiceImplTest {
         }
 
         @Test
+        void noQualityGate_withStaleImpactAnalysis_deletesIt() {
+            when(impactAnalysisRepository.findByOwnerAndRepo(OWNER, REPO)).thenReturn(Optional.empty());
+            when(persistenceService.loadDetection(OWNER, REPO)).thenReturn(Optional.of(detectionWithoutQualityGate()));
+            when(impactAnalysisRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(true);
+
+            service.analyze(OWNER, REPO, false);
+
+            verify(impactAnalysisRepository).deleteByOwnerAndRepo(OWNER, REPO);
+        }
+
+        @Test
         void neverDetected_runsDetectionAutomatically() {
             when(impactAnalysisRepository.findByOwnerAndRepo(OWNER, REPO)).thenReturn(Optional.empty());
             when(persistenceService.loadDetection(OWNER, REPO)).thenReturn(Optional.empty());
@@ -489,6 +500,75 @@ class ImpactAnalysisServiceImplTest {
                 // if the duplicate softwareQuality* metrics were also counted.
                 assertThat(comparison.getImprovementScore()).isCloseTo(200.0 / 6, org.assertj.core.data.Offset.offset(0.01));
             }
+        }
+    }
+
+    @Nested
+    class RefreshRepositoryData {
+
+        @Test
+        void hasQualityGate_forcesDetectionCommitsAndMetrics() {
+            RepositoryDetectionResult fresh = RepositoryDetectionResult.builder()
+                    .owner(OWNER).repo(REPO).url(URL).hasQualityGate(true).build();
+            when(detectionService.detect(URL)).thenReturn(fresh);
+            when(githubClient.getAllCommits(OWNER, REPO)).thenReturn(List.of());
+            when(metricsCsvLoader.loadRowsForRepository(OWNER, REPO)).thenReturn(List.of(mock(CSVRecord.class)));
+            when(metricsIngestionService.ingest(OWNER, REPO, true)).thenReturn(
+                    new IngestResult(QualityMetricsResponse.builder().records(List.of()).build(), false));
+
+            RepositoryDetectionResult result = service.refreshRepositoryData(OWNER, REPO);
+
+            assertThat(result).isSameAs(fresh);
+            verify(persistenceService).saveDetection(fresh, true);
+            verify(commitHistoryRepository).deleteByOwnerAndRepo(OWNER, REPO);
+            verify(githubClient).getAllCommits(OWNER, REPO);
+            verify(metricsIngestionService).ingest(OWNER, REPO, true);
+            verify(impactAnalysisRepository, never()).deleteByOwnerAndRepo(any(), any());
+        }
+
+        @Test
+        void neverReusesCachedDetection() {
+            RepositoryDetectionResult fresh = RepositoryDetectionResult.builder()
+                    .owner(OWNER).repo(REPO).url(URL).hasQualityGate(false).build();
+            when(detectionService.detect(URL)).thenReturn(fresh);
+
+            service.refreshRepositoryData(OWNER, REPO);
+
+            verify(detectionService).detect(URL);
+            verify(persistenceService, never()).loadDetection(any(), any());
+            verify(persistenceService).saveDetection(fresh, true);
+        }
+
+        @Test
+        void noQualityGate_skipsCommitsAndMetrics_andClearsStaleImpactAnalysis() {
+            RepositoryDetectionResult fresh = RepositoryDetectionResult.builder()
+                    .owner(OWNER).repo(REPO).url(URL).hasQualityGate(false).build();
+            when(detectionService.detect(URL)).thenReturn(fresh);
+            when(impactAnalysisRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(true);
+
+            service.refreshRepositoryData(OWNER, REPO);
+
+            verify(githubClient, never()).getAllCommits(any(), any());
+            verify(commitHistoryRepository, never()).deleteByOwnerAndRepo(any(), any());
+            verifyNoInteractions(metricsIngestionService);
+            verify(impactAnalysisRepository).deleteByOwnerAndRepo(OWNER, REPO);
+        }
+
+        @Test
+        void hasQualityGate_noPriorCommitHistory_fetchesFromGitHub() {
+            RepositoryDetectionResult fresh = RepositoryDetectionResult.builder()
+                    .owner(OWNER).repo(REPO).url(URL).hasQualityGate(true).build();
+            when(detectionService.detect(URL)).thenReturn(fresh);
+            when(githubClient.getAllCommits(OWNER, REPO)).thenReturn(List.of());
+            when(metricsCsvLoader.loadRowsForRepository(OWNER, REPO)).thenReturn(List.of(mock(CSVRecord.class)));
+            when(metricsIngestionService.ingest(OWNER, REPO, true)).thenReturn(
+                    new IngestResult(QualityMetricsResponse.builder().records(List.of()).build(), false));
+
+            service.refreshRepositoryData(OWNER, REPO);
+
+            verify(commitHistoryRepository).deleteByOwnerAndRepo(OWNER, REPO);
+            verify(commitHistoryRepository, never()).existsByOwnerAndRepo(any(), any());
+            verify(githubClient).getAllCommits(OWNER, REPO);
         }
     }
 
