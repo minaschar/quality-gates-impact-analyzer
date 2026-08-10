@@ -151,12 +151,31 @@ class CommitChunkServiceImplTest {
 
         CommitChunkResponse response = service.getChunks(OWNER, REPO, 2, false);
 
-        // chunkSize = ceil(5/2) = 3 -> chunk starts at index 0 and 3
         assertThat(response.getChunks()).hasSize(2);
         assertThat(response.getChunks().get(0).getChunkIndex()).isEqualTo(0);
         assertThat(response.getChunks().get(0).getStartCommit()).isEqualTo("c0");
         assertThat(response.getChunks().get(1).getChunkIndex()).isEqualTo(1);
-        assertThat(response.getChunks().get(1).getStartCommit()).isEqualTo("c3");
+        assertThat(response.getChunks().get(1).getStartCommit()).isEqualTo("c2");
+    }
+
+    @Test
+    void chunkCountThatDoesNotEvenlyDivideTotal_stillProducesExactlyChunkCountChunks() {
+        List<CommitHistoryEntity> cached = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            cached.add(commit("c" + i, Instant.parse("2024-01-01T00:00:00Z").plusSeconds(i)));
+        }
+        when(commitHistoryRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(true);
+        when(commitHistoryRepository.findByOwnerAndRepoOrderByCommitDateAsc(OWNER, REPO)).thenReturn(cached);
+
+        CommitChunkResponse response = service.getChunks(OWNER, REPO, 9, false);
+
+        assertThat(response.getChunkCount()).isEqualTo(9);
+        assertThat(response.getChunks()).hasSize(9);
+        assertThat(response.getChunks()).extracting(CommitChunkResponse.ChunkInfo::getChunkIndex)
+                .containsExactly(0, 1, 2, 3, 4, 5, 6, 7, 8);
+        List<String> starts = response.getChunks().stream().map(CommitChunkResponse.ChunkInfo::getStartCommit).toList();
+        assertThat(starts).doesNotHaveDuplicates();
+        assertThat(starts.getFirst()).isEqualTo("c0");
     }
 
     @Test

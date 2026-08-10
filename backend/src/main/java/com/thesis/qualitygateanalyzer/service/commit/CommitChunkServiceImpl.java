@@ -42,12 +42,10 @@ public class CommitChunkServiceImpl implements CommitChunkService {
             );
         }
 
-        int chunkSize = (int) Math.ceil((double) totalCommits / chunkCount);
         List<ChunkInfo> chunks = new ArrayList<>();
 
         for (int i = 0; i < chunkCount; i++) {
-            int startIdx = i * chunkSize;
-            if (startIdx >= totalCommits) break;
+            int startIdx = (int) ((long) i * totalCommits / chunkCount);
             CommitHistoryEntity head = commits.get(startIdx);
             chunks.add(ChunkInfo.builder()
                     .chunkIndex(i)
