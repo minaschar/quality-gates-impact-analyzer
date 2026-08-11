@@ -6,6 +6,7 @@ import com.thesis.qualitygateanalyzer.dto.request.QualityGateDetectionRequest;
 import com.thesis.qualitygateanalyzer.dto.response.ApiResponse;
 import com.thesis.qualitygateanalyzer.exception.QualityGateDetectionNotFoundException;
 import com.thesis.qualitygateanalyzer.exception.RepositoryNotFoundException;
+import com.thesis.qualitygateanalyzer.service.impactanalysis.ImpactAnalysisService;
 import com.thesis.qualitygateanalyzer.service.qualitygate.PersistenceService;
 import com.thesis.qualitygateanalyzer.service.qualitygate.QualityGateDetectionService;
 import com.thesis.qualitygateanalyzer.util.GitHubIdentifiers;
@@ -34,6 +35,7 @@ public class QualityGateDetectionController implements ApiV1Controller {
 
     private final QualityGateDetectionService detectionService;
     private final PersistenceService persistenceService;
+    private final ImpactAnalysisService impactAnalysisService;
 
     private static final Pattern GITHUB_URL = Pattern.compile(
             "(?:https?://)?(?:www\\.)?github\\.com/([^/]+)/([^/]+?)(?:\\.git)?/?$"
@@ -83,6 +85,10 @@ public class QualityGateDetectionController implements ApiV1Controller {
 
             // Save to database
             persistenceService.saveDetection(result, forceNewDetection);
+
+            // A repo whose quality gate got removed since its last detection shouldn't keep
+            // serving a now-inaccurate before/after comparison computed back when it had one.
+            impactAnalysisService.clearImpactAnalysisIfNoQualityGate(owner, repo, result.isHasQualityGate());
 
             return ResponseEntity.ok(ApiResponse.<RepositoryDetectionResult>builder()
                     .success(true)

@@ -47,8 +47,9 @@ Then open `http://localhost:5173`. See [backend/README.md](backend/README.md) an
   automated test suite yet).
 - **End-to-end**: with all three services running, use the UI at `localhost:5173` — paste a
   GitHub URL on the Dashboard or Analyze page, walk through the Repository Detail tabs
-  (Overview / Quality Gates / Enforcement / Quality Impact), and try the force-refresh and
-  delete actions to confirm the confirmation dialogs and toasts fire correctly.
+  (Overview / Quality Gates / Enforcement / Quality Impact), and try the cache-bypassing actions
+  (header's Re-run Full Analysis, Quality Gates tab's Redetect, Quality Impact tab's Recompute,
+  and Delete) to confirm the confirmation dialogs and toasts fire correctly.
 
 ## Shutting down without losing data
 

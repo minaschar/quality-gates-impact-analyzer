@@ -1,7 +1,11 @@
-import { GitCommitHorizontal } from 'lucide-react';
+import { GitCommitHorizontal, RefreshCw } from 'lucide-react';
 import { Card, CardHeader } from '@/components/common/Card';
 import { EmptyState } from '@/components/common/EmptyState';
+import { Button } from '@/components/common/Button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { QGToolBadge } from '@/components/repository/QGToolBadge';
+import { useDetectQualityGate } from '@/hooks/useRepositories';
 import { formatDate } from '@/utils/formatters';
 import type { RepositoryDetectionResult } from '@/types';
 
@@ -10,11 +14,30 @@ interface QualityGatesTabProps {
 }
 
 export function QualityGatesTab({ detection }: QualityGatesTabProps) {
+  const detectMutation = useDetectQualityGate();
+  const { requestConfirm, dialogProps } = useConfirmDialog();
+
   const introductions = [...(detection.qualityGateHistory?.toolIntroductions ?? [])].sort((a, b) => {
     if (!a.effectiveDate) return 1;
     if (!b.effectiveDate) return -1;
     return new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime();
   });
+
+  function confirmRedetect() {
+    requestConfirm({
+      title: 'Redetect quality gates?',
+      message: `This bypasses the cache and re-runs quality gate detection for ${detection.owner}/${detection.repo} from scratch, including fresh GitHub API calls. Commit history and quality metrics aren't affected -- use Re-run Full Analysis on this page's header instead if you want those refreshed too. Continue?`,
+      confirmLabel: 'Redetect',
+      onConfirm: () => detectMutation.mutate({ repositoryUrl: detection.url, forceNewDetection: true }),
+    });
+  }
+
+  const redetectButton = (
+    <Button variant="secondary" size="sm" isLoading={detectMutation.isPending} onClick={confirmRedetect}>
+      {!detectMutation.isPending && <RefreshCw className="h-3.5 w-3.5" />}
+      {detectMutation.isPending ? 'Redetecting…' : 'Redetect'}
+    </Button>
+  );
 
   if (introductions.length === 0) {
     return (
@@ -22,7 +45,9 @@ export function QualityGatesTab({ detection }: QualityGatesTabProps) {
         <EmptyState
           title="No quality gate history available"
           message="History detection may have been skipped or found no tool introductions for this repository."
+          action={redetectButton}
         />
+        <ConfirmDialog {...dialogProps} />
       </Card>
     );
   }
@@ -30,7 +55,11 @@ export function QualityGatesTab({ detection }: QualityGatesTabProps) {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader title="Introduction Timeline" subtitle="Order in which quality gate tools were added" />
+        <CardHeader
+          title="Introduction Timeline"
+          subtitle="Order in which quality gate tools were added"
+          action={redetectButton}
+        />
         <div className="overflow-x-auto pb-2">
           <div className="flex min-w-max items-start gap-0">
             {introductions.map((intro, i) => (
@@ -77,6 +106,8 @@ export function QualityGatesTab({ detection }: QualityGatesTabProps) {
           </Card>
         ))}
       </div>
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

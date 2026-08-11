@@ -52,19 +52,23 @@ export function useRunImpactAnalysis() {
 
 /**
  * Forces a fresh detection, commit history fetch, and quality-metrics re-ingestion. Does not
- * recompute the before/after comparison itself -- that's a deliberate second step via
- * useRunImpactAnalysis's forceNewAnalysis, same as it already works today.
+ * recompute the before/after comparison itself -- callers that want a truly end-to-end refresh
+ * (detection + commits + metrics + comparison) chain a forceNewAnalysis=true call via
+ * useRunImpactAnalysis on success, same as RepositoryDetail's "Re-run Full Analysis" does.
  */
 export function useRefreshRepositoryData() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ owner, repo }: { owner: string; repo: string }) => refreshRepositoryData(owner, repo),
     onSuccess: (result) => {
-      // Detection changed; commits/metrics may have too (impact-analysis's own stored
-      // comparison did not -- recomputing it is the user's separate next step).
       queryClient.invalidateQueries({ queryKey: repositoryKeys.all });
       queryClient.setQueryData(repositoryKeys.detail(result.owner, result.repo), result);
       if (!result.hasQualityGate) {
+        // The quality gate is gone -- the backend already deleted any stored impact analysis
+        // for this repo, so drop it from the cache too rather than leaving stale before/after
+        // data visible on the Quality Impact tab.
+        queryClient.invalidateQueries({ queryKey: impactAnalysisKeys.list() });
+        queryClient.removeQueries({ queryKey: impactAnalysisKeys.detail(result.owner, result.repo) });
         notify.warning(`No quality gate detected for ${result.owner}/${result.repo}`);
       } else {
         notify.success(`Data refreshed for ${result.owner}/${result.repo}`);

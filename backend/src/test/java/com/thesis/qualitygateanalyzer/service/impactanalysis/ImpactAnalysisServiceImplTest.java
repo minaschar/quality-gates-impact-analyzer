@@ -573,6 +573,35 @@ class ImpactAnalysisServiceImplTest {
     }
 
     @Nested
+    class ClearImpactAnalysisIfNoQualityGate {
+
+        @Test
+        void hasQualityGate_doesNothing() {
+            service.clearImpactAnalysisIfNoQualityGate(OWNER, REPO, true);
+
+            verifyNoInteractions(impactAnalysisRepository);
+        }
+
+        @Test
+        void noQualityGate_withStoredAnalysis_deletesIt() {
+            when(impactAnalysisRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(true);
+
+            service.clearImpactAnalysisIfNoQualityGate(OWNER, REPO, false);
+
+            verify(impactAnalysisRepository).deleteByOwnerAndRepo(OWNER, REPO);
+        }
+
+        @Test
+        void noQualityGate_withNothingStored_isNoOp() {
+            when(impactAnalysisRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(false);
+
+            service.clearImpactAnalysisIfNoQualityGate(OWNER, REPO, false);
+
+            verify(impactAnalysisRepository, never()).deleteByOwnerAndRepo(any(), any());
+        }
+    }
+
+    @Nested
     class GetAnalysis {
 
         @Test

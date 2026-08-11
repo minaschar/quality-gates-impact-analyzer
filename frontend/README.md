@@ -26,7 +26,13 @@ by default (see `.env.example` — copy to `.env` to override via `VITE_API_BASE
 - **Repositories list** — search + quality-gate filter, sortable columns, pagination
   (configurable page size, default 10), empty/no-match states
 - **Repository detail** — Overview / Quality Gates / Enforcement / Quality Impact tabs, each with
-  its own charts (timeline, before/after bars, enforcement donut)
+  its own charts (timeline, before/after bars, enforcement donut). Header's "Re-run Full Analysis"
+  is the complete end-to-end action -- fresh detection, commit history, quality metrics, and the
+  before/after comparison, chaining two API calls; the Quality Gates tab's "Redetect" forces
+  detection only; the Quality Impact tab's "Recompute" forces the metrics + comparison only,
+  reusing whatever's already cached for detection/commits. Each narrower action stays independently
+  useful (and independently callable via the API) -- see [backend/README.md](../backend/README.md)'s
+  API Endpoints table for what each endpoint touches on its own
 - **Analyze** — GitHub URL form with real-time validation and a confirmation step for forced
   re-analysis
 - **Settings** — view/edit runtime configuration (GitHub token, limits, feature flags)
@@ -38,8 +44,8 @@ by default (see `.env.example` — copy to `.env` to override via `VITE_API_BASE
   catches render crashes; toast notifications confirm/report every mutation; an offline banner
   appears when connectivity drops (TanStack Query auto-resumes queued requests on reconnect)
 - **Validation & confirmation** — real-time GitHub URL validation mirrors the backend's own regex;
-  destructive or cache-bypassing actions (re-run detection, recompute impact analysis, delete
-  repository) go through a confirmation dialog first
+  destructive or cache-bypassing actions (re-run full analysis, redetect quality gates, recompute
+  impact analysis, delete repository) go through a confirmation dialog first
 
 ## Structure
 

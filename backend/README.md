@@ -101,7 +101,8 @@ curl -X POST "http://localhost:8080/api/v1/quality-gate/detect?forceNewDetection
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/v1/impact-analysis?owner=..&repo=..` | Run impact analysis (with caching) |
-| POST | `/api/v1/impact-analysis?owner=..&repo=..&forceNewAnalysis=true` | Force recomputation |
+| POST | `/api/v1/impact-analysis?owner=..&repo=..&forceNewAnalysis=true` | Force recomputation of the before/after comparison (re-ingests metrics; reuses cached detection/commits) |
+| POST | `/api/v1/impact-analysis/refresh?owner=..&repo=..` | Force a fresh detection + commit history fetch + metrics re-ingestion (does not recompute the comparison itself) |
 | GET | `/api/v1/impact-analysis/{owner}/{repo}` | Get a computed impact analysis |
 | GET | `/api/v1/impact-analysis` | List all analyzed repositories with summary |
 

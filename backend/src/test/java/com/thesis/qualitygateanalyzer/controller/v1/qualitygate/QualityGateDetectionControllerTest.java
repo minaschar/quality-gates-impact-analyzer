@@ -5,6 +5,7 @@ import com.thesis.qualitygateanalyzer.dto.request.QualityGateDetectionRequest;
 import com.thesis.qualitygateanalyzer.dto.response.ApiResponse;
 import com.thesis.qualitygateanalyzer.exception.QualityGateDetectionNotFoundException;
 import com.thesis.qualitygateanalyzer.exception.RepositoryNotFoundException;
+import com.thesis.qualitygateanalyzer.service.impactanalysis.ImpactAnalysisService;
 import com.thesis.qualitygateanalyzer.service.qualitygate.PersistenceService;
 import com.thesis.qualitygateanalyzer.service.qualitygate.QualityGateDetectionService;
 import org.junit.jupiter.api.Assertions;
@@ -30,6 +31,8 @@ class QualityGateDetectionControllerTest {
     private QualityGateDetectionService detectionService;
     @Mock
     private PersistenceService persistenceService;
+    @Mock
+    private ImpactAnalysisService impactAnalysisService;
 
     private QualityGateDetectionController controller;
 
@@ -39,11 +42,11 @@ class QualityGateDetectionControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new QualityGateDetectionController(detectionService, persistenceService);
+        controller = new QualityGateDetectionController(detectionService, persistenceService, impactAnalysisService);
     }
 
     private RepositoryDetectionResult result() {
-        return RepositoryDetectionResult.builder().owner(OWNER).repo(REPO).build();
+        return RepositoryDetectionResult.builder().owner(OWNER).repo(REPO).hasQualityGate(true).build();
     }
 
     @Nested
@@ -163,6 +166,42 @@ class QualityGateDetectionControllerTest {
             assertThat(response.getStatusCode().value()).isEqualTo(500);
             Assertions.assertNotNull(response.getBody());
             assertThat(response.getBody().getError()).contains("boom");
+        }
+
+        @Test
+        void freshDetection_withQualityGate_doesNotClearImpactAnalysis() {
+            when(persistenceService.loadDetection(OWNER, REPO)).thenReturn(Optional.empty());
+            when(detectionService.detect(URL)).thenReturn(result());
+            QualityGateDetectionRequest request = new QualityGateDetectionRequest();
+            request.setRepositoryUrl(URL);
+
+            controller.detectQualityGate(request, false);
+
+            verify(impactAnalysisService).clearImpactAnalysisIfNoQualityGate(OWNER, REPO, true);
+        }
+
+        @Test
+        void freshDetection_withoutQualityGate_clearsAnyStaleImpactAnalysis() {
+            when(persistenceService.loadDetection(OWNER, REPO)).thenReturn(Optional.empty());
+            when(detectionService.detect(URL)).thenReturn(
+                    RepositoryDetectionResult.builder().owner(OWNER).repo(REPO).hasQualityGate(false).build());
+            QualityGateDetectionRequest request = new QualityGateDetectionRequest();
+            request.setRepositoryUrl(URL);
+
+            controller.detectQualityGate(request, false);
+
+            verify(impactAnalysisService).clearImpactAnalysisIfNoQualityGate(OWNER, REPO, false);
+        }
+
+        @Test
+        void cachedResult_neverTouchesImpactAnalysis() {
+            when(persistenceService.loadDetection(OWNER, REPO)).thenReturn(Optional.of(result()));
+            QualityGateDetectionRequest request = new QualityGateDetectionRequest();
+            request.setRepositoryUrl(URL);
+
+            controller.detectQualityGate(request, false);
+
+            verifyNoInteractions(impactAnalysisService);
         }
     }
 

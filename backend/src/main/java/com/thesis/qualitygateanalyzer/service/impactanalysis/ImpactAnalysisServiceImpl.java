@@ -200,6 +200,14 @@ public class ImpactAnalysisServiceImpl implements ImpactAnalysisService {
         return fresh;
     }
 
+    @Override
+    @Transactional
+    public void clearImpactAnalysisIfNoQualityGate(String owner, String repo, boolean hasQualityGate) {
+        if (!hasQualityGate) {
+            clearStaleImpactAnalysisIfPresent(owner, repo);
+        }
+    }
+
     /**
      * Deletes any stored impact analysis for a repository that's just been found to no longer
      * have a detected quality gate (tool removed, or detection re-run with a different result).

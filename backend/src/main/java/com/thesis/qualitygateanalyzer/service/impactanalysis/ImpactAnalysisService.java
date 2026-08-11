@@ -36,4 +36,16 @@ public interface ImpactAnalysisService {
      * {@code forceNewAnalysis=true} afterward, as a deliberate second step.
      */
     RepositoryDetectionResult refreshRepositoryData(String owner, String repo);
+
+    /**
+     * Deletes any stored impact analysis for a repository if it no longer has a detected
+     * quality gate; a no-op otherwise (including when nothing was stored to begin with).
+     * {@link #analyze} and {@link #refreshRepositoryData} already do this internally when
+     * they discover "no quality gate" themselves -- this is exposed for detection-only
+     * callers (plain {@code POST /quality-gate/detect}, with or without
+     * {@code forceNewDetection}) that never otherwise touch impact analysis at all, so a
+     * repo whose quality gate tool gets removed doesn't keep serving a stale, now-inaccurate
+     * before/after comparison from before it was removed.
+     */
+    void clearImpactAnalysisIfNoQualityGate(String owner, String repo, boolean hasQualityGate);
 }
