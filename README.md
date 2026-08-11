@@ -9,8 +9,8 @@ for exploring the results.
 
 ```
 .
-├── backend/             Spring Boot API (see backend/README.md)
-├── frontend/            React + TypeScript UI (see frontend/README.md)
+├── backend/              Spring Boot API (see backend/README.md)
+├── frontend/             React + TypeScript UI (see frontend/README.md)
 ├── scripts/              Standalone Python tooling for Sonar/PR cadence analysis
 └── docker-compose.yml    Shared infrastructure (Postgres, pgAdmin) — not the app itself
 ```
