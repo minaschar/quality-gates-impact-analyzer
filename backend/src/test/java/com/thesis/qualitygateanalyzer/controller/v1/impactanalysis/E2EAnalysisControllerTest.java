@@ -4,6 +4,7 @@ import com.thesis.qualitygateanalyzer.domain.enums.ImpactTrend;
 import com.thesis.qualitygateanalyzer.domain.qualitygate.RepositoryDetectionResult;
 import com.thesis.qualitygateanalyzer.dto.response.ApiResponse;
 import com.thesis.qualitygateanalyzer.dto.response.ImpactAnalysisResponse;
+import com.thesis.qualitygateanalyzer.exception.RepositoryDataNotFoundException;
 import com.thesis.qualitygateanalyzer.exception.RepositoryNotFoundException;
 import com.thesis.qualitygateanalyzer.service.impactanalysis.ImpactAnalysisService;
 import org.junit.jupiter.api.Assertions;
@@ -154,6 +155,48 @@ class E2EAnalysisControllerTest {
             ResponseEntity<ApiResponse<ImpactAnalysisResponse>> result = controller.runE2EAnalysis(OWNER, REPO);
 
             assertThat(result.getStatusCode().value()).isEqualTo(500);
+        }
+    }
+
+    @Nested
+    class DeleteAllRepositoryData {
+
+        @Test
+        void success_returns200() {
+            ResponseEntity<ApiResponse<Void>> result = controller.deleteAllRepositoryData(OWNER, REPO);
+
+            assertThat(result.getStatusCode().value()).isEqualTo(200);
+            Assertions.assertNotNull(result.getBody());
+            assertThat(result.getBody().isSuccess()).isTrue();
+            assertThat(result.getBody().getMessage()).isEqualTo("All data deleted for " + OWNER + "/" + REPO);
+            verify(impactAnalysisService).deleteAllRepositoryData(OWNER, REPO);
+        }
+
+        @Test
+        void ownerAndRepoCasing_isNormalizedBeforeCallingService() {
+            controller.deleteAllRepositoryData(" Octocat ", "Hello-World");
+
+            verify(impactAnalysisService).deleteAllRepositoryData(OWNER, REPO);
+        }
+
+        @Test
+        void noDataFound_propagatesToGlobalHandler() {
+            doThrow(new RepositoryDataNotFoundException("No data found for " + OWNER + "/" + REPO))
+                    .when(impactAnalysisService).deleteAllRepositoryData(OWNER, REPO);
+
+            assertThrows(RepositoryDataNotFoundException.class,
+                    () -> controller.deleteAllRepositoryData(OWNER, REPO));
+        }
+
+        @Test
+        void unexpectedException_returns500() {
+            doThrow(new RuntimeException("boom")).when(impactAnalysisService).deleteAllRepositoryData(OWNER, REPO);
+
+            ResponseEntity<ApiResponse<Void>> result = controller.deleteAllRepositoryData(OWNER, REPO);
+
+            assertThat(result.getStatusCode().value()).isEqualTo(500);
+            Assertions.assertNotNull(result.getBody());
+            assertThat(result.getBody().getError()).contains("boom");
         }
     }
 }

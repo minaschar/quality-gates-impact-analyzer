@@ -22,3 +22,12 @@ export function runE2EAnalysis(owner: string, repo: string) {
     )
   );
 }
+
+/**
+ * DELETE /e2e-analysis -- deletes every stored trace of a repository: detection, commit
+ * history, quality metrics, and impact analysis. No orphaned data left in any table. Returns
+ * 404 if no data exists for this repository at all.
+ */
+export function deleteAllRepositoryData(owner: string, repo: string) {
+  return unwrap(apiClient.delete<ApiResponse<void>>('/e2e-analysis', { params: { owner, repo } }));
+}

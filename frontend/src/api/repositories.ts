@@ -25,11 +25,6 @@ export function listRepositories(hasQualityGate?: boolean) {
   );
 }
 
-/** DELETE /quality-gate/{owner}/{repo} */
-export function deleteQualityGateDetection(owner: string, repo: string) {
-  return unwrap(apiClient.delete<ApiResponse<void>>(`/quality-gate/${owner}/${repo}`));
-}
-
 export interface RateLimitInfo {
   remaining: number;
   limit: number;

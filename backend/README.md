@@ -94,7 +94,7 @@ curl -X POST "http://localhost:8080/api/v1/quality-gate/detect?forceNewDetection
 | GET | `/api/v1/quality-gate/{owner}/{repo}` | Get cached quality gate detection |
 | GET | `/api/v1/quality-gate` | List all analyzed repositories |
 | GET | `/api/v1/quality-gate?hasQualityGate=true` | List repos with QG |
-| DELETE | `/api/v1/quality-gate/{owner}/{repo}` | Delete cached quality gate detection |
+| DELETE | `/api/v1/quality-gate/{owner}/{repo}` | Delete cached quality gate detection only -- commit history, quality metrics, and impact analysis are untouched; see E2E Analysis below for a full wipe |
 
 ### Impact Analysis
 
@@ -110,6 +110,7 @@ curl -X POST "http://localhost:8080/api/v1/quality-gate/detect?forceNewDetection
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/v1/e2e-analysis?owner=..&repo=..` | Force absolutely everything: fresh detection, commit history, quality metrics, and (if a quality gate is found) the before/after comparison -- the single call for a fully forced, end-to-end result |
+| DELETE | `/api/v1/e2e-analysis?owner=..&repo=..` | Delete absolutely everything: detection, commit history, quality metrics, and impact analysis -- no orphaned data left in any table. Returns 404 only if none of the four exist |
 
 ### Commit Chunking
 

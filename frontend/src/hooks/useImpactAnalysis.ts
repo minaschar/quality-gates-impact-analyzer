@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getImpactAnalysis, listImpactAnalyses, runImpactAnalysis } from '@/api/impactAnalysis';
-import { runE2EAnalysis } from '@/api/e2eAnalysis';
+import { deleteAllRepositoryData, runE2EAnalysis } from '@/api/e2eAnalysis';
 import { repositoryKeys } from '@/hooks/useRepositories';
 import { notify } from '@/utils/toast';
 
@@ -77,5 +77,25 @@ export function useRunE2EAnalysis() {
       }
     },
     onError: (error) => notify.error(error, 'E2E analysis failed'),
+  });
+}
+
+/**
+ * Deletes every stored trace of a repository: detection, commit history, quality metrics, and
+ * impact analysis. No orphaned data left in any table -- unlike the narrower
+ * DELETE /quality-gate/{owner}/{repo}, which only removed detection data.
+ */
+export function useDeleteRepository() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ owner, repo }: { owner: string; repo: string }) => deleteAllRepositoryData(owner, repo),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: repositoryKeys.all });
+      queryClient.removeQueries({ queryKey: repositoryKeys.detail(variables.owner, variables.repo) });
+      queryClient.invalidateQueries({ queryKey: impactAnalysisKeys.list() });
+      queryClient.removeQueries({ queryKey: impactAnalysisKeys.detail(variables.owner, variables.repo) });
+      notify.success(`Deleted ${variables.owner}/${variables.repo}`);
+    },
+    onError: (error) => notify.error(error, 'Delete failed'),
   });
 }

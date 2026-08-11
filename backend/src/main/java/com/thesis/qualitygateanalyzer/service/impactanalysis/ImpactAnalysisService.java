@@ -48,4 +48,16 @@ public interface ImpactAnalysisService {
      * before/after comparison from before it was removed.
      */
     void clearImpactAnalysisIfNoQualityGate(String owner, String repo, boolean hasQualityGate);
+
+    /**
+     * Deletes every stored trace of a repository: quality-gate detection (all versions, plus
+     * its cascaded workflows/tool-introductions/enforcement data), commit history, ingested
+     * quality metrics, and any computed impact analysis. Unlike {@code DELETE
+     * /quality-gate/{owner}/{repo}}, which only removes detection data and can leave the other
+     * three behind as orphans, this leaves nothing in any table.
+     *
+     * @throws com.thesis.qualitygateanalyzer.exception.RepositoryDataNotFoundException if none
+     *         of the four data sources have anything stored for this owner/repo
+     */
+    void deleteAllRepositoryData(String owner, String repo);
 }

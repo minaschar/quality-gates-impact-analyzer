@@ -7,8 +7,8 @@ import { RepositoryDetailSkeleton } from '@/components/common/skeletons';
 import { Tabs } from '@/components/common/Tabs';
 import { Button } from '@/components/common/Button';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { useDeleteRepository, useDetectQualityGate, useRepositoryDetection } from '@/hooks/useRepositories';
-import { useRunE2EAnalysis } from '@/hooks/useImpactAnalysis';
+import { useDetectQualityGate, useRepositoryDetection } from '@/hooks/useRepositories';
+import { useDeleteRepository, useRunE2EAnalysis } from '@/hooks/useImpactAnalysis';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { classifyError } from '@/utils/errors';
 import { OverviewTab } from '@/components/repository/OverviewTab';
@@ -79,7 +79,7 @@ export function RepositoryDetail() {
   function confirmDelete() {
     requestConfirm({
       title: 'Delete this repository?',
-      message: `This permanently deletes all cached detection data for ${detection.owner}/${detection.repo}. This cannot be undone.`,
+      message: `This permanently deletes everything stored for ${detection.owner}/${detection.repo} -- detection, commit history, quality metrics, and impact analysis. No data is left behind. This cannot be undone.`,
       confirmLabel: 'Delete',
       danger: true,
       onConfirm: () =>

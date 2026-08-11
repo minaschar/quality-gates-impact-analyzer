@@ -55,6 +55,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.<Void>builder().success(false).error(e.getMessage()).build());
     }
 
+    @ExceptionHandler(RepositoryDataNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRepositoryDataNotFound(RepositoryDataNotFoundException e) {
+        log.warn("Repository data not found: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.<Void>builder().success(false).error(e.getMessage()).build());
+    }
+
     /**
      * Preserves the pre-existing non-ApiResponse shape used by the commit-chunking
      * endpoint for this specific error, so existing clients parsing {@code error}/

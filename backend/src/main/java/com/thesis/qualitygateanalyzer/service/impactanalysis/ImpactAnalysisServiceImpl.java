@@ -16,9 +16,11 @@ import com.thesis.qualitygateanalyzer.entity.impactanalysis.ImpactMetricsSnapsho
 import com.thesis.qualitygateanalyzer.entity.impactanalysis.ImpactMetricsSnapshotEntity.Classification;
 import com.thesis.qualitygateanalyzer.entity.impactanalysis.ImpactMetricsSnapshotEntity.DateSource;
 import com.thesis.qualitygateanalyzer.exception.ImpactAnalysisNotFoundException;
+import com.thesis.qualitygateanalyzer.exception.RepositoryDataNotFoundException;
 import com.thesis.qualitygateanalyzer.mapper.ImpactAnalysisMapper;
 import com.thesis.qualitygateanalyzer.repository.commit.CommitHistoryRepository;
 import com.thesis.qualitygateanalyzer.repository.impactanalysis.ImpactAnalysisRepository;
+import com.thesis.qualitygateanalyzer.repository.qualitymetrics.QualityMetricSnapshotRepository;
 import com.thesis.qualitygateanalyzer.service.github.GitHubApiClient;
 import com.thesis.qualitygateanalyzer.service.qualitygate.PersistenceService;
 import com.thesis.qualitygateanalyzer.service.qualitygate.QualityGateDetectionService;
@@ -83,6 +85,7 @@ public class ImpactAnalysisServiceImpl implements ImpactAnalysisService {
     private final PersistenceService persistenceService;
     private final QualityMetricsIngestionService metricsIngestionService;
     private final QualityMetricsCsvLoader metricsCsvLoader;
+    private final QualityMetricSnapshotRepository metricSnapshotRepository;
     private final CommitHistoryRepository commitHistoryRepository;
     private final GitHubApiClient githubClient;
     private final ImpactAnalysisRepository impactAnalysisRepository;
@@ -206,6 +209,36 @@ public class ImpactAnalysisServiceImpl implements ImpactAnalysisService {
         if (!hasQualityGate) {
             clearStaleImpactAnalysisIfPresent(owner, repo);
         }
+    }
+
+    /**
+     * The existence check only decides whether to 404 -- it deliberately does not gate which
+     * individual deletes run. Each of the four deletes below is already a safe no-op if nothing
+     * matches, so running all four unconditionally is strictly more robust than trying to guard
+     * each one with its own existence flag (which, e.g., would need to separately account for a
+     * detection row that's a non-current version only -- {@code hasDetection()} only checks the
+     * current one, but {@code deleteDetection()} removes every version regardless).
+     */
+    @Override
+    @Transactional
+    public void deleteAllRepositoryData(String owner, String repo) {
+        boolean hasAnyData = persistenceService.hasDetection(owner, repo)
+                || commitHistoryRepository.existsByOwnerAndRepo(owner, repo)
+                || metricSnapshotRepository.existsByOwnerAndRepo(owner, repo)
+                || impactAnalysisRepository.existsByOwnerAndRepo(owner, repo);
+
+        if (!hasAnyData) {
+            throw new RepositoryDataNotFoundException("No data found for " + owner + "/" + repo);
+        }
+
+        log.info("Deleting all data for {}/{}", owner, repo);
+
+        persistenceService.deleteDetection(owner, repo);
+        commitHistoryRepository.deleteByOwnerAndRepo(owner, repo);
+        metricSnapshotRepository.deleteByOwnerAndRepo(owner, repo);
+        impactAnalysisRepository.deleteByOwnerAndRepo(owner, repo);
+
+        log.info("All data deleted for {}/{}", owner, repo);
     }
 
     /**

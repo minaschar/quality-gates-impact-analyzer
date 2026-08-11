@@ -13,9 +13,11 @@ import com.thesis.qualitygateanalyzer.entity.impactanalysis.ImpactAnalysisEntity
 import com.thesis.qualitygateanalyzer.entity.impactanalysis.ImpactComparisonEntity;
 import com.thesis.qualitygateanalyzer.entity.impactanalysis.ImpactMetricsSnapshotEntity;
 import com.thesis.qualitygateanalyzer.exception.ImpactAnalysisNotFoundException;
+import com.thesis.qualitygateanalyzer.exception.RepositoryDataNotFoundException;
 import com.thesis.qualitygateanalyzer.mapper.ImpactAnalysisMapper;
 import com.thesis.qualitygateanalyzer.repository.commit.CommitHistoryRepository;
 import com.thesis.qualitygateanalyzer.repository.impactanalysis.ImpactAnalysisRepository;
+import com.thesis.qualitygateanalyzer.repository.qualitymetrics.QualityMetricSnapshotRepository;
 import com.thesis.qualitygateanalyzer.service.github.GitHubApiClient;
 import com.thesis.qualitygateanalyzer.service.qualitygate.PersistenceService;
 import com.thesis.qualitygateanalyzer.service.qualitygate.QualityGateDetectionService;
@@ -56,6 +58,8 @@ class ImpactAnalysisServiceImplTest {
     @Mock
     private QualityMetricsCsvLoader metricsCsvLoader;
     @Mock
+    private QualityMetricSnapshotRepository metricSnapshotRepository;
+    @Mock
     private CommitHistoryRepository commitHistoryRepository;
     @Mock
     private GitHubApiClient githubClient;
@@ -73,7 +77,8 @@ class ImpactAnalysisServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new ImpactAnalysisServiceImpl(detectionService, persistenceService, metricsIngestionService,
-                metricsCsvLoader, commitHistoryRepository, githubClient, impactAnalysisRepository, mapper);
+                metricsCsvLoader, metricSnapshotRepository, commitHistoryRepository, githubClient,
+                impactAnalysisRepository, mapper);
         lenient().when(mapper.toComparisonDtos(any())).thenReturn(List.of());
         lenient().when(mapper.toTimelineDtos(any())).thenReturn(List.of());
         // Default: metrics already ingested, so loadMetricRows()'s CSV-loader pre-check is
@@ -597,6 +602,66 @@ class ImpactAnalysisServiceImplTest {
 
             service.clearImpactAnalysisIfNoQualityGate(OWNER, REPO, false);
 
+            verify(impactAnalysisRepository, never()).deleteByOwnerAndRepo(any(), any());
+        }
+    }
+
+    @Nested
+    class DeleteAllRepositoryData {
+
+        @Test
+        void hasDetectionOnly_stillDeletesAllFour() {
+            when(persistenceService.hasDetection(OWNER, REPO)).thenReturn(true);
+
+            service.deleteAllRepositoryData(OWNER, REPO);
+
+            verify(persistenceService).deleteDetection(OWNER, REPO);
+            verify(commitHistoryRepository).deleteByOwnerAndRepo(OWNER, REPO);
+            verify(metricSnapshotRepository).deleteByOwnerAndRepo(OWNER, REPO);
+            verify(impactAnalysisRepository).deleteByOwnerAndRepo(OWNER, REPO);
+        }
+
+        @Test
+        void hasOnlyOrphanedCommitHistory_stillDeletesAllFour() {
+            when(persistenceService.hasDetection(OWNER, REPO)).thenReturn(false);
+            when(commitHistoryRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(true);
+
+            service.deleteAllRepositoryData(OWNER, REPO);
+
+            verify(persistenceService).deleteDetection(OWNER, REPO);
+            verify(commitHistoryRepository).deleteByOwnerAndRepo(OWNER, REPO);
+            verify(metricSnapshotRepository).deleteByOwnerAndRepo(OWNER, REPO);
+            verify(impactAnalysisRepository).deleteByOwnerAndRepo(OWNER, REPO);
+        }
+
+        @Test
+        void hasOnlyOrphanedImpactAnalysis_reachesLastClause_stillDeletesAllFour() {
+            when(persistenceService.hasDetection(OWNER, REPO)).thenReturn(false);
+            when(commitHistoryRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(false);
+            when(metricSnapshotRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(false);
+            when(impactAnalysisRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(true);
+
+            service.deleteAllRepositoryData(OWNER, REPO);
+
+            verify(persistenceService).deleteDetection(OWNER, REPO);
+            verify(commitHistoryRepository).deleteByOwnerAndRepo(OWNER, REPO);
+            verify(metricSnapshotRepository).deleteByOwnerAndRepo(OWNER, REPO);
+            verify(impactAnalysisRepository).deleteByOwnerAndRepo(OWNER, REPO);
+        }
+
+        @Test
+        void noDataAnywhere_throwsAndDeletesNothing() {
+            when(persistenceService.hasDetection(OWNER, REPO)).thenReturn(false);
+            when(commitHistoryRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(false);
+            when(metricSnapshotRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(false);
+            when(impactAnalysisRepository.existsByOwnerAndRepo(OWNER, REPO)).thenReturn(false);
+
+            assertThrows(RepositoryDataNotFoundException.class,
+                    () -> service.deleteAllRepositoryData(OWNER, REPO));
+
+            verify(persistenceService, never()).deleteDetection(any(), any());
+            verify(commitHistoryRepository, never()).deleteByOwnerAndRepo(any(), any());
+            verify(metricSnapshotRepository, never()).deleteByOwnerAndRepo(any(), any());
             verify(impactAnalysisRepository, never()).deleteByOwnerAndRepo(any(), any());
         }
     }

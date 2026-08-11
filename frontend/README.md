@@ -33,7 +33,9 @@ by default (see `.env.example` — copy to `.env` to override via `VITE_API_BASE
   the metrics + comparison only, reusing whatever's already cached for detection/commits. Each
   narrower action stays independently useful (and independently callable via the API) -- see
   [backend/README.md](../backend/README.md)'s API Endpoints table for what each endpoint touches
-  on its own
+  on its own. Header's "Delete" also calls `DELETE /e2e-analysis`, not the narrower
+  `DELETE /quality-gate/{owner}/{repo}` -- it removes detection, commit history, quality
+  metrics, and impact analysis together, leaving no orphaned data behind
 - **Analyze** — GitHub URL form with real-time validation and a confirmation step for forced
   re-analysis
 - **Settings** — view/edit runtime configuration (GitHub token, limits, feature flags)

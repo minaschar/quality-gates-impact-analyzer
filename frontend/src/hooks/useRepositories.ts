@@ -1,10 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  deleteQualityGateDetection,
-  detectQualityGate,
-  getQualityGateDetection,
-  listRepositories,
-} from '@/api/repositories';
+import { detectQualityGate, getQualityGateDetection, listRepositories } from '@/api/repositories';
 import { notify } from '@/utils/toast';
 
 export const repositoryKeys = {
@@ -40,18 +35,5 @@ export function useDetectQualityGate() {
       notify.success(`Detection complete for ${result.owner}/${result.repo}`);
     },
     onError: (error) => notify.error(error, 'Detection failed'),
-  });
-}
-
-export function useDeleteRepository() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ owner, repo }: { owner: string; repo: string }) => deleteQualityGateDetection(owner, repo),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: repositoryKeys.all });
-      queryClient.removeQueries({ queryKey: repositoryKeys.detail(variables.owner, variables.repo) });
-      notify.success(`Deleted ${variables.owner}/${variables.repo}`);
-    },
-    onError: (error) => notify.error(error, 'Delete failed'),
   });
 }
