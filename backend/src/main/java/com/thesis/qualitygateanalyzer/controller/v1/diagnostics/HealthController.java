@@ -1,4 +1,4 @@
-package com.thesis.qualitygateanalyzer.controller.v1.health;
+package com.thesis.qualitygateanalyzer.controller.v1.diagnostics;
 
 import com.thesis.qualitygateanalyzer.controller.v1.ApiV1Controller;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * Application health check, independent of any single feature area.
+ * Application health check, independent of any single feature area. Alongside
+ * {@link GitHubController} in this package: neither has business domain logic of its own --
+ * both just report on the state of the system or a dependency it relies on.
  */
 @RestController
 @Tag(name = "Health", description = "Application health check")

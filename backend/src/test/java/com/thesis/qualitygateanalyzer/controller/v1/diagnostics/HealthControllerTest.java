@@ -1,4 +1,4 @@
-package com.thesis.qualitygateanalyzer.controller.v1.health;
+package com.thesis.qualitygateanalyzer.controller.v1.diagnostics;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

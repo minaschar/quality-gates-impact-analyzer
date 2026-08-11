@@ -1,4 +1,4 @@
-package com.thesis.qualitygateanalyzer.controller.v1.github;
+package com.thesis.qualitygateanalyzer.controller.v1.diagnostics;
 
 import com.thesis.qualitygateanalyzer.service.github.GitHubApiClient;
 import org.junit.jupiter.api.Assertions;

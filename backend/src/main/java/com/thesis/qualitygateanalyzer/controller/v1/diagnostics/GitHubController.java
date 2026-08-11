@@ -1,4 +1,4 @@
-package com.thesis.qualitygateanalyzer.controller.v1.github;
+package com.thesis.qualitygateanalyzer.controller.v1.diagnostics;
 
 import com.thesis.qualitygateanalyzer.controller.v1.ApiV1Controller;
 import com.thesis.qualitygateanalyzer.service.github.GitHubApiClient;
@@ -14,6 +14,8 @@ import java.util.Map;
 
 /**
  * GitHub API diagnostics, independent of any single feature area that happens to call GitHub.
+ * Alongside {@link HealthController} in this package: neither has business domain logic of its
+ * own -- both just report on the state of the system or a dependency it relies on.
  */
 @RestController
 @RequiredArgsConstructor
