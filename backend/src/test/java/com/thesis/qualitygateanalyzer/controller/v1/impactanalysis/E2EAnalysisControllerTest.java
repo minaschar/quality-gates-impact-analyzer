@@ -1,4 +1,4 @@
-package com.thesis.qualitygateanalyzer.controller.v1.e2eanalysis;
+package com.thesis.qualitygateanalyzer.controller.v1.impactanalysis;
 
 import com.thesis.qualitygateanalyzer.domain.enums.ImpactTrend;
 import com.thesis.qualitygateanalyzer.domain.qualitygate.RepositoryDetectionResult;

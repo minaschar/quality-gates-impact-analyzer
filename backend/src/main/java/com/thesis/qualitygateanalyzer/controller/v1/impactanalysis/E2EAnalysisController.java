@@ -1,4 +1,4 @@
-package com.thesis.qualitygateanalyzer.controller.v1.e2eanalysis;
+package com.thesis.qualitygateanalyzer.controller.v1.impactanalysis;
 
 import com.thesis.qualitygateanalyzer.controller.v1.ApiV1Controller;
 import com.thesis.qualitygateanalyzer.dto.response.ApiResponse;
@@ -23,10 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
  * found) an immediate recomputation of the before/after comparison from that refreshed data --
  * a genuinely end-to-end (E2E) forced analysis in one call.
  * <p>
- * Deliberately a separate controller from {@code ImpactAnalysisController} and
- * {@code QualityGateDetectionController}: this endpoint's whole purpose is to force every step
- * both of those controllers can individually force on their own (narrower) terms, so grouping
- * it under either one would misrepresent its scope.
+ * A separate class from {@link ImpactAnalysisController} (its narrower {@code forceNewAnalysis}
+ * flag intentionally never forces detection or commits -- see that class's own docs), but the
+ * same package: this controller depends on nothing but {@link ImpactAnalysisService}, exactly
+ * like {@link ImpactAnalysisController} does, so it's really just a second, fully-forced front
+ * door onto the same service rather than a distinct feature area of its own.
  */
 @Slf4j
 @RestController
