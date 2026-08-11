@@ -185,7 +185,11 @@ curl -X POST "http://localhost:8080/api/v1/quality-gate/detect?forceNewDetection
 ```
 
 Impact analysis is keyed independently by `(owner, repo)` rather than FK'd to a specific
-detection row, so re-running detection never orphans a prior impact analysis:
+detection row, so re-running detection never leaves a prior impact analysis with a dangling
+foreign key. It's not left stale either: if a (re)detection via `/quality-gate/detect` or
+`/impact-analysis/refresh` finds the quality gate gone, any stored impact analysis for that
+repo is proactively deleted, so a now-inaccurate before/after comparison from before the tool
+was removed doesn't keep being served by `/impact-analysis`:
 
 ```
 ┌─────────────────────┐
