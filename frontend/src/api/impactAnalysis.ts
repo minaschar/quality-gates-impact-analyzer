@@ -12,6 +12,13 @@ export function runImpactAnalysis(owner: string, repo: string, forceNewAnalysis 
   );
 }
 
+// Unlike every other mutation here, this one always does the full detection + full commit
+// re-fetch + full metrics re-ingest with no cache shortcuts -- it can genuinely take several
+// minutes for a repo with a large commit history, well past apiClient's default 120s timeout
+// (which was tuned for the lighter, often-cached calls). A per-request override avoids raising
+// the timeout globally, which would just delay failure feedback for calls that are actually stuck.
+const REFRESH_DATA_TIMEOUT_MS = 600_000;
+
 /**
  * POST /impact-analysis/refresh -- forces a fresh detection, commit history fetch, and
  * quality-metrics re-ingestion for a repository. Does not recompute the before/after
@@ -23,7 +30,7 @@ export function refreshRepositoryData(owner: string, repo: string) {
     apiClient.post<ApiResponse<RepositoryDetectionResult>>(
       '/impact-analysis/refresh',
       {},
-      { params: { owner, repo } }
+      { params: { owner, repo }, timeout: REFRESH_DATA_TIMEOUT_MS }
     )
   );
 }
