@@ -28,11 +28,12 @@ by default (see `.env.example` — copy to `.env` to override via `VITE_API_BASE
 - **Repository detail** — Overview / Quality Gates / Enforcement / Quality Impact tabs, each with
   its own charts (timeline, before/after bars, enforcement donut). Header's "Re-run Full Analysis"
   is the complete end-to-end action -- fresh detection, commit history, quality metrics, and the
-  before/after comparison, chaining two API calls; the Quality Gates tab's "Redetect" forces
-  detection only; the Quality Impact tab's "Recompute" forces the metrics + comparison only,
-  reusing whatever's already cached for detection/commits. Each narrower action stays independently
-  useful (and independently callable via the API) -- see [backend/README.md](../backend/README.md)'s
-  API Endpoints table for what each endpoint touches on its own
+  before/after comparison, all in one call to `POST /e2e-analysis`; the Quality Gates tab's
+  "Redetect" forces detection only; the Quality Impact tab's "Recompute" forces
+  the metrics + comparison only, reusing whatever's already cached for detection/commits. Each
+  narrower action stays independently useful (and independently callable via the API) -- see
+  [backend/README.md](../backend/README.md)'s API Endpoints table for what each endpoint touches
+  on its own
 - **Analyze** — GitHub URL form with real-time validation and a confirmation step for forced
   re-analysis
 - **Settings** — view/edit runtime configuration (GitHub token, limits, feature flags)

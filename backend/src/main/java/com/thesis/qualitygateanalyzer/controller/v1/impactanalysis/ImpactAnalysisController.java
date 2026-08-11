@@ -1,7 +1,6 @@
 package com.thesis.qualitygateanalyzer.controller.v1.impactanalysis;
 
 import com.thesis.qualitygateanalyzer.controller.v1.ApiV1Controller;
-import com.thesis.qualitygateanalyzer.domain.qualitygate.RepositoryDetectionResult;
 import com.thesis.qualitygateanalyzer.dto.response.ApiResponse;
 import com.thesis.qualitygateanalyzer.dto.response.ImpactAnalysisResponse;
 import com.thesis.qualitygateanalyzer.dto.response.ImpactAnalysisSummaryDto;
@@ -91,62 +90,6 @@ public class ImpactAnalysisController implements ApiV1Controller {
                     .body(ApiResponse.<ImpactAnalysisResponse>builder()
                             .success(false)
                             .error("Impact analysis failed: " + e.getMessage())
-                            .build());
-        }
-    }
-
-    /**
-     * Force a fresh quality-gate detection, commit history fetch, and quality-metrics
-     * re-ingestion for a repository -- refreshes every input the before/after comparison
-     * depends on, without recomputing the comparison itself.
-     */
-    @PostMapping("/refresh")
-    @Operation(
-            summary = "Refresh Underlying Data",
-            description = "Forces a fresh quality-gate detection, commit history fetch, and quality-metrics " +
-                    "re-ingestion for a repository. Does not recompute the before/after comparison -- call " +
-                    "POST /impact-analysis with forceNewAnalysis=true afterward to do that from the refreshed data."
-    )
-    public ResponseEntity<ApiResponse<RepositoryDetectionResult>> refreshData(
-            @Parameter(description = "Repository owner") @RequestParam String owner,
-            @Parameter(description = "Repository name") @RequestParam String repo) {
-
-        owner = GitHubIdentifiers.normalize(owner);
-        repo = GitHubIdentifiers.normalize(repo);
-
-        log.info("Refresh data request for {}/{}", owner, repo);
-
-        try {
-            RepositoryDetectionResult result = impactAnalysisService.refreshRepositoryData(owner, repo);
-
-            String message = result.isHasQualityGate()
-                    ? "Data refreshed for " + owner + "/" + repo
-                    : "Data refreshed; no quality gate detected for " + owner + "/" + repo;
-
-            return ResponseEntity.ok(ApiResponse.<RepositoryDetectionResult>builder()
-                    .success(true)
-                    .message(message)
-                    .data(result)
-                    .build());
-
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.<RepositoryDetectionResult>builder()
-                            .success(false)
-                            .error(e.getMessage())
-                            .build());
-
-        } catch (RepositoryNotFoundException e) {
-            // Let the global exception handler build the response (same 400 contract as above).
-            throw e;
-
-        } catch (Exception e) {
-            log.error("Data refresh failed for {}/{}", owner, repo, e);
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.<RepositoryDetectionResult>builder()
-                            .success(false)
-                            .error("Data refresh failed: " + e.getMessage())
                             .build());
         }
     }

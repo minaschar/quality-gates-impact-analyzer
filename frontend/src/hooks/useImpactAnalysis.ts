@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getImpactAnalysis, listImpactAnalyses, refreshRepositoryData, runImpactAnalysis } from '@/api/impactAnalysis';
+import { getImpactAnalysis, listImpactAnalyses, runImpactAnalysis } from '@/api/impactAnalysis';
+import { runE2EAnalysis } from '@/api/e2eAnalysis';
 import { repositoryKeys } from '@/hooks/useRepositories';
 import { notify } from '@/utils/toast';
 
@@ -51,29 +52,30 @@ export function useRunImpactAnalysis() {
 }
 
 /**
- * Forces a fresh detection, commit history fetch, and quality-metrics re-ingestion. Does not
- * recompute the before/after comparison itself -- callers that want a truly end-to-end refresh
- * (detection + commits + metrics + comparison) chain a forceNewAnalysis=true call via
- * useRunImpactAnalysis on success, same as RepositoryDetail's "Re-run Full Analysis" does.
+ * Forces a fresh detection, commit history fetch, quality-metrics re-ingestion, and (if a
+ * quality gate is found) the before/after comparison -- the single, fully end-to-end action.
+ * The response is an ImpactAnalysisResponse, not a RepositoryDetectionResult, so detection data
+ * (stars, forks, quality-gate history, etc.) is invalidated rather than optimistically set --
+ * a refetch of GET /quality-gate/{owner}/{repo} picks up what refreshRepositoryData already
+ * saved server-side.
  */
-export function useRefreshRepositoryData() {
+export function useRunE2EAnalysis() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ owner, repo }: { owner: string; repo: string }) => refreshRepositoryData(owner, repo),
+    mutationFn: ({ owner, repo }: { owner: string; repo: string }) => runE2EAnalysis(owner, repo),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: repositoryKeys.all });
-      queryClient.setQueryData(repositoryKeys.detail(result.owner, result.repo), result);
-      if (!result.hasQualityGate) {
-        // The quality gate is gone -- the backend already deleted any stored impact analysis
-        // for this repo, so drop it from the cache too rather than leaving stale before/after
-        // data visible on the Quality Impact tab.
-        queryClient.invalidateQueries({ queryKey: impactAnalysisKeys.list() });
+      queryClient.invalidateQueries({ queryKey: impactAnalysisKeys.list() });
+      if (result.hasQualityGate) {
+        queryClient.setQueryData(impactAnalysisKeys.detail(result.owner, result.repo), result);
+        notify.success(`E2E analysis complete for ${result.owner}/${result.repo}`);
+      } else {
+        // The backend already deleted any stored impact analysis for this repo -- drop it from
+        // the cache too rather than leaving stale before/after data visible on the tab.
         queryClient.removeQueries({ queryKey: impactAnalysisKeys.detail(result.owner, result.repo) });
         notify.warning(`No quality gate detected for ${result.owner}/${result.repo}`);
-      } else {
-        notify.success(`Data refreshed for ${result.owner}/${result.repo}`);
       }
     },
-    onError: (error) => notify.error(error, 'Data refresh failed'),
+    onError: (error) => notify.error(error, 'E2E analysis failed'),
   });
 }

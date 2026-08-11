@@ -102,9 +102,28 @@ curl -X POST "http://localhost:8080/api/v1/quality-gate/detect?forceNewDetection
 |--------|----------|-------------|
 | POST | `/api/v1/impact-analysis?owner=..&repo=..` | Run impact analysis (with caching) |
 | POST | `/api/v1/impact-analysis?owner=..&repo=..&forceNewAnalysis=true` | Force recomputation of the before/after comparison (re-ingests metrics; reuses cached detection/commits) |
-| POST | `/api/v1/impact-analysis/refresh?owner=..&repo=..` | Force a fresh detection + commit history fetch + metrics re-ingestion (does not recompute the comparison itself) |
 | GET | `/api/v1/impact-analysis/{owner}/{repo}` | Get a computed impact analysis |
 | GET | `/api/v1/impact-analysis` | List all analyzed repositories with summary |
+
+### E2E Analysis
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/e2e-analysis?owner=..&repo=..` | Force absolutely everything: fresh detection, commit history, quality metrics, and (if a quality gate is found) the before/after comparison -- the single call for a fully forced, end-to-end result |
+
+### Commit Chunking
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/repositories/{owner}/{repo}/commits/chunks?chunkCount=..&forceRefresh=..` | Compress the full commit history into a fixed number of sequential chunks |
+
+### Quality Metrics
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/repositories/{owner}/{repo}/quality-metrics?forceNewAnalysis=..` | Ingest SonarQube quality metrics for a repository from the source dataset (with caching) |
+| GET | `/api/v1/repositories/{owner}/{repo}/quality-metrics` | Get previously ingested quality metrics for a repository |
+| POST | `/api/v1/quality-metrics/bulk-ingest?forceNewAnalysis=..` | Ingest quality metrics for every repository in the source dataset in one pass |
 
 ### Configuration
 
@@ -187,9 +206,9 @@ curl -X POST "http://localhost:8080/api/v1/quality-gate/detect?forceNewDetection
 Impact analysis is keyed independently by `(owner, repo)` rather than FK'd to a specific
 detection row, so re-running detection never leaves a prior impact analysis with a dangling
 foreign key. It's not left stale either: if a (re)detection via `/quality-gate/detect` or
-`/impact-analysis/refresh` finds the quality gate gone, any stored impact analysis for that
-repo is proactively deleted, so a now-inaccurate before/after comparison from before the tool
-was removed doesn't keep being served by `/impact-analysis`:
+`/e2e-analysis` finds the quality gate gone, any stored impact analysis for that repo is
+proactively deleted, so a now-inaccurate before/after comparison from before the tool was
+removed doesn't keep being served by `/impact-analysis`:
 
 ```
 ┌─────────────────────┐
