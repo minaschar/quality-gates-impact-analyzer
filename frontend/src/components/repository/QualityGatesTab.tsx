@@ -7,6 +7,7 @@ import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { QGToolBadge } from '@/components/repository/QGToolBadge';
 import { useDetectQualityGate } from '@/hooks/useRepositories';
 import { formatDate } from '@/utils/formatters';
+import { notify } from '@/utils/toast';
 import type { RepositoryDetectionResult } from '@/types';
 
 interface QualityGatesTabProps {
@@ -28,7 +29,17 @@ export function QualityGatesTab({ detection }: QualityGatesTabProps) {
       title: 'Redetect quality gates?',
       message: `This bypasses the cache and re-runs quality gate detection for ${detection.owner}/${detection.repo} from scratch, including fresh GitHub API calls. Commit history and quality metrics aren't affected -- use Re-run Full Analysis on this page's header instead if you want those refreshed too. Continue?`,
       confirmLabel: 'Redetect',
-      onConfirm: () => detectMutation.mutate({ repositoryUrl: detection.url, forceNewDetection: true }),
+      onConfirm: () =>
+        detectMutation.mutate(
+          { repositoryUrl: detection.url, forceNewDetection: true },
+          {
+            onSuccess: (result) => {
+              if (result.hasQualityGate) {
+                notify.info('Detection updated -- run Recompute on the Quality Impact tab to reflect it in the before/after comparison.');
+              }
+            },
+          }
+        ),
     });
   }
 

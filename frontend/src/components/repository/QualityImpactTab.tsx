@@ -12,7 +12,7 @@ import { TrendBadge } from '@/components/repository/TrendBadge';
 import { QualityTimelineChart } from '@/components/charts/QualityTimelineChart';
 import { BeforeAfterChart } from '@/components/charts/BeforeAfterChart';
 import { useImpactAnalysis, useRunImpactAnalysis } from '@/hooks/useImpactAnalysis';
-import { formatDate, formatPercent } from '@/utils/formatters';
+import { formatDate, formatDateTime, formatPercent } from '@/utils/formatters';
 import { classifyError } from '@/utils/errors';
 import type { TimelinePointDto, ToolComparisonDto } from '@/types';
 
@@ -96,6 +96,7 @@ export function QualityImpactTab({ owner, repo }: QualityImpactTabProps) {
         label: 'Date Range',
         value: data.dateRangeStart ? `${formatDate(data.dateRangeStart)} – ${formatDate(data.dateRangeEnd)}` : '—',
       },
+      { label: 'Analyzed At', value: data.computedAt ? formatDateTime(data.computedAt) : '—' },
     ];
     return items;
   }, [impactQuery.data]);

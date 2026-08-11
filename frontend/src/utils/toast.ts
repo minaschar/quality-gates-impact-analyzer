@@ -23,4 +23,12 @@ export const notify = {
       style: { background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' },
     });
   },
+  /** Neutral follow-up tip -- not an error/warning, just a nudge toward a next action. */
+  info(message: string) {
+    toast(message, {
+      icon: 'ℹ️',
+      style: { background: '#EFF6FF', color: '#1E40AF', border: '1px solid #BFDBFE' },
+      duration: 6000,
+    });
+  },
 };
