@@ -28,7 +28,9 @@ by default (see `.env.example` — copy to `.env` to override via `VITE_API_BASE
 - **Repository detail** — Overview / Quality Gates / Enforcement / Quality Impact tabs, each with
   its own charts (timeline, before/after bars, enforcement donut). Header's "Re-run Full Analysis"
   is the complete end-to-end action -- fresh detection, commit history, quality metrics, and the
-  before/after comparison, all in one call to `POST /e2e-analysis`; the Quality Gates tab's
+  before/after comparison, all in one call to `POST /e2e-analysis` -- only shown once an impact
+  analysis has been computed at least once (nothing to "re-run" before then; use the Quality
+  Impact tab's own "Run Impact Analysis" first); the Quality Gates tab's
   "Redetect" forces detection only; the Quality Impact tab's "Recompute" forces
   the metrics + comparison only, reusing whatever's already cached for detection/commits. Each
   narrower action stays independently useful (and independently callable via the API) -- see

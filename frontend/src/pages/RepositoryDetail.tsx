@@ -8,7 +8,7 @@ import { Tabs } from '@/components/common/Tabs';
 import { Button } from '@/components/common/Button';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useDetectQualityGate, useRepositoryDetection } from '@/hooks/useRepositories';
-import { useDeleteRepository, useRunE2EAnalysis } from '@/hooks/useImpactAnalysis';
+import { useDeleteRepository, useImpactAnalysis, useRunE2EAnalysis } from '@/hooks/useImpactAnalysis';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { classifyError } from '@/utils/errors';
 import { OverviewTab } from '@/components/repository/OverviewTab';
@@ -29,6 +29,10 @@ export function RepositoryDetail() {
   const [activeTab, setActiveTab] = useState('overview');
 
   const detectionQuery = useRepositoryDetection(owner, repo);
+  // Only used to decide whether "Re-run Full Analysis" should be shown at all (see below) --
+  // QualityImpactTab independently fetches the same query key, so this doesn't add a real
+  // extra network cost, just an existence check that TanStack Query dedupes/caches.
+  const impactAnalysisQuery = useImpactAnalysis(owner, repo);
   const detectMutation = useDetectQualityGate();
   const e2eAnalysisMutation = useRunE2EAnalysis();
   const deleteMutation = useDeleteRepository();
@@ -66,6 +70,12 @@ export function RepositoryDetail() {
   }
 
   const detection = detectionQuery.data;
+
+  // Detection alone doesn't need a "full" re-run yet -- there's no computed comparison to
+  // redo until impact analysis has run at least once (via the Quality Impact tab's own "Run
+  // Impact Analysis"). Showing the button before then would just be an unnecessary extra step
+  // for what's really a two-step first-time flow: analyze, then re-run everything if needed.
+  const hasImpactAnalysis = impactAnalysisQuery.isSuccess && Boolean(impactAnalysisQuery.data);
 
   function confirmRerunAnalysis() {
     requestConfirm({
@@ -121,10 +131,12 @@ export function RepositoryDetail() {
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
-          <Button variant="secondary" isLoading={e2eAnalysisMutation.isPending} onClick={confirmRerunAnalysis}>
-            {!e2eAnalysisMutation.isPending && <RefreshCw className="h-4 w-4" />}
-            {e2eAnalysisMutation.isPending ? 'Running Full Analysis…' : 'Re-run Full Analysis'}
-          </Button>
+          {hasImpactAnalysis && (
+            <Button variant="secondary" isLoading={e2eAnalysisMutation.isPending} onClick={confirmRerunAnalysis}>
+              {!e2eAnalysisMutation.isPending && <RefreshCw className="h-4 w-4" />}
+              {e2eAnalysisMutation.isPending ? 'Running Full Analysis…' : 'Re-run Full Analysis'}
+            </Button>
+          )}
           <Button variant="danger" isLoading={deleteMutation.isPending} onClick={confirmDelete}>
             {!deleteMutation.isPending && <Trash2 className="h-4 w-4" />}
             {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
