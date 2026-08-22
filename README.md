@@ -7,7 +7,7 @@ for exploring the results.
 
 ## Screenshots
 
-All screenshots live under [`screenshots/`](screenshots/) — this section links every one of them.
+All 20 images under [`screenshots/`](screenshots/) are rendered below.
 
 ### Application
 
@@ -32,43 +32,49 @@ All screenshots live under [`screenshots/`](screenshots/) — this section links
 
 Three real repositories walked through all four Repository Detail tabs (Overview, Quality Gates,
 Enforcement, Quality Impact), chosen to represent the three outcomes the impact-analysis pipeline
-can report:
+can report.
 
-**[Improved](screenshots/experiments/improved/)** — quality got measurably better after the quality
-gate was introduced (e.g. `apache/caldera`, Mostly Enforced at 85%, +24.2% improvement score):
-[Overview](screenshots/experiments/improved/improved_overview.png) ·
-[Quality Gates](screenshots/experiments/improved/improved_quality_gates.png) ·
-[Enforcement](screenshots/experiments/improved/improved_enforcement.png) ·
-[Quality Impact](screenshots/experiments/improved/improved_quality_impact.png)
+#### Improved
 
-[![Improved overview](screenshots/experiments/improved/improved_overview.png)](screenshots/experiments/improved/improved_overview.png)
-[![Improved quality impact](screenshots/experiments/improved/improved_quality_impact.png)](screenshots/experiments/improved/improved_quality_impact.png)
+Quality got measurably better after the quality gate was introduced (`apache/caldera`, Mostly
+Enforced at 85%, +24.2% improvement score).
 
-**[Degraded](screenshots/experiments/degraded/)** — quality got measurably worse after the quality
-gate was introduced:
-[Overview](screenshots/experiments/degraded/degraded_overview.png) ·
-[Quality Gates](screenshots/experiments/degraded/degraded_quality_gates.png) ·
-[Enforcement](screenshots/experiments/degraded/degraded_enforcement.png) ·
-[Quality Impact](screenshots/experiments/degraded/degraded_quality_impact.png)
+![Improved overview](screenshots/experiments/improved/improved_overview.png)
+![Improved quality gates](screenshots/experiments/improved/improved_quality_gates.png)
+![Improved enforcement](screenshots/experiments/improved/improved_enforcement.png)
+![Improved quality impact](screenshots/experiments/improved/improved_quality_impact.png)
 
-**[Unchanged](screenshots/experiments/unchanged/)** — no significant before/after difference:
-[Overview](screenshots/experiments/unchanged/unchanged_overview.png) ·
-[Quality Gates](screenshots/experiments/unchanged/unchanged_quality_gates.png) ·
-[Enforcement](screenshots/experiments/unchanged/unchanged_enforcement.png) ·
-[Quality Impact](screenshots/experiments/unchanged/unchanged_quality_impact.png)
+#### Degraded
+
+Quality got measurably worse after the quality gate was introduced.
+
+![Degraded overview](screenshots/experiments/degraded/degraded_overview.png)
+![Degraded quality gates](screenshots/experiments/degraded/degraded_quality_gates.png)
+![Degraded enforcement](screenshots/experiments/degraded/degraded_enforcement.png)
+![Degraded quality impact](screenshots/experiments/degraded/degraded_quality_impact.png)
+
+#### Unchanged
+
+No significant before/after difference.
+
+![Unchanged overview](screenshots/experiments/unchanged/unchanged_overview.png)
+![Unchanged quality gates](screenshots/experiments/unchanged/unchanged_quality_gates.png)
+![Unchanged enforcement](screenshots/experiments/unchanged/unchanged_enforcement.png)
+![Unchanged quality impact](screenshots/experiments/unchanged/unchanged_quality_impact.png)
 
 ### SonarQube analysis cadence (`screenshots/sonarqube_analysis_cadence/`)
 
 Output of the [`scripts/`](scripts/README.md) cadence tooling — per-repository timelines of when
 SonarQube analyses land across a repo's PR history.
 
-[![All analyses](screenshots/sonarqube_analysis_cadence/all_data.png)](screenshots/sonarqube_analysis_cadence/all_data.png)
-[![OK-only analyses](screenshots/sonarqube_analysis_cadence/ok_only.png)](screenshots/sonarqube_analysis_cadence/ok_only.png)
+**all_data.png** — every SonarQube analysis, unfiltered (2310 repos, 139,107 analyses).
 
-- **[all_data.png](screenshots/sonarqube_analysis_cadence/all_data.png)** — every SonarQube analysis,
-  unfiltered (2310 repos, 139,107 analyses).
-- **[ok_only.png](screenshots/sonarqube_analysis_cadence/ok_only.png)** — restricted to analyses where
-  `qualityGateStatus == OK` (483 repos, 45,022 analyses).
+![All analyses](screenshots/sonarqube_analysis_cadence/all_data.png)
+
+**ok_only.png** — restricted to analyses where `qualityGateStatus == OK` (483 repos, 45,022
+analyses).
+
+![OK-only analyses](screenshots/sonarqube_analysis_cadence/ok_only.png)
 
 ## Layout
 
